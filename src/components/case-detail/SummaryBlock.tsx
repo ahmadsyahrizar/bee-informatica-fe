@@ -2,10 +2,14 @@
 import { DetailHeader } from "./DetailHeader";
 import { ChevronRight } from "lucide-react";
 import KV from "./KV";
-
-
+import { useState } from "react";
+import CreditScoreDrawer from "./drawerDetail";
 
 export function SummaryBlock() {
+ const [openDrawer, setDrawer] = useState(false)
+
+ const handleDrawer = () => setDrawer(prev => !prev)
+
  return (
   <>
    <DetailHeader caseId={"CS-1234"} />
@@ -25,7 +29,7 @@ export function SummaryBlock() {
        <div className="border-0 rounded-[8px] bg-gray-50 p-12">
         <div className="flex flex-row justify-between items-center">
          <div className="text-14 text-gray-600">Total Score</div>
-         <ChevronRight className="size-16" />
+         <ChevronRight onClick={handleDrawer} className="size-16" />
         </div>
         {/* TODO NEXT: PRESENTATION TOTAL SCORE PROGRESS BAR HALF CIRCLE */}
         <div className="mt-10 flex items-center gap-8">
@@ -50,6 +54,8 @@ export function SummaryBlock() {
 
 
    </section>
+
+   <CreditScoreDrawer onOpenChange={handleDrawer} open={openDrawer} />
   </>
  );
 }   

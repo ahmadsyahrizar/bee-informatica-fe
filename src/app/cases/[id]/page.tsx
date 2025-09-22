@@ -5,7 +5,6 @@ import { OverviewSidebar } from "@/components/case-detail/OverviewSidebar";
 import { SummaryBlock } from "@/components/case-detail/SummaryBlock";
 import { AIHighlight } from "@/components/case-detail/AiHighlight";
 import { FinancialSummary } from "@/components/case-detail/FinancialSummary";
-// import { FooterNav } from "@/components/case-detail/FooterNav";
 import SalesReport from "@/components/case-detail/SalesReport";
 import EvaluationDetails from "@/components/case-detail/EvaluationDetail";
 import { CCRISContainer } from "@/components/case-detail/CCRISContainer";
@@ -63,8 +62,6 @@ const igPosts = [
  },
 ];
 
-
-
 const photos: PhotoItem[] = [
  { id: 1, url: "https://images.unsplash.com/photo-1528605105345-5344ea20e269?q=80&w=1600&auto=format&fit=crop" },
  { id: 2, url: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1600&auto=format&fit=crop" },
@@ -72,6 +69,55 @@ const photos: PhotoItem[] = [
  { id: 4, url: "https://images.unsplash.com/photo-1485182708500-e8f1f318ba72?q=80&w=1600&auto=format&fit=crop" },
  { id: 5, url: "https://images.unsplash.com/photo-1485182708500-e8f1f318ba72?q=80&w=1600&auto=format&fit=crop" },
 ];
+
+
+const dummySales = [
+ { label: "Sales monthly", value: "RM130 – 150K" },
+ { label: "Profit", value: "RM5K" },
+ { label: "Expenses monthly", value: "RM30K" },
+ { label: "Rent monthly", value: "RM7,9K" },
+ { label: "Salary staff monthly", value: "10K" },
+ { label: "Salary model", value: "Daily pay" },
+ { label: "Salary per day", value: "RM60 – 70/ Day" },
+]
+
+const dummyEvaluationDetail = [
+ {
+  id: 1,
+  title: "Financial Health",
+  criteria: [
+   {
+    label: "Profitability (Net income over past 6 months)",
+    value: "-",
+   },
+   {
+    label: "Cash flow stability",
+    hint: "Consistency of inflows/outflows",
+    value: "-",
+   },
+   { label: "Working Capital", value: "-", hint: "Testing" },
+   { label: "Credit History", value: "-" },
+   { label: "Others", value: "-" },
+  ],
+ },
+ {
+  id: 2,
+  title: "Business & Sales",
+  criteria: [
+   { label: "Revenue Streams", value: "-" },
+   { label: "Customer Base", value: "-" },
+   {
+    label: "Market Trends and Growth potential in industry.",
+    value: "-",
+   },
+   {
+    label: "Competitor’s positioning & market share",
+    value: "-",
+   },
+   { label: "Others", value: "-" },
+  ],
+ },
+]
 
 const documents: DocumentItem[] = [
  {
@@ -88,38 +134,37 @@ const documents: DocumentItem[] = [
  },
 ];
 
+const sampleRows = [
+ {
+  no: 1,
+  date: "03/02/2016",
+  facility: "Purchase of passenger cars",
+  balance: 673.0,
+  limit: 46000.0,
+  months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
+ },
+ {
+  no: 2,
+  date: "03/02/2016",
+  facility: "Purchase of passenger cars",
+  balance: 673.0,
+  limit: 46000.0,
+  months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
+ },
+ {
+  no: 3,
+  date: "03/02/2016",
+  facility: "Purchase of passenger cars",
+  balance: 673.0,
+  limit: 46000.0,
+  months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
+ },
+];
 
 
 export default function Page({ params }: { params: { id: string } }) {
  // Fetch your case data here (RSC)
  // const data = await fetchCase(params.id)
-
- const sampleRows = [
-  {
-   no: 1,
-   date: "03/02/2016",
-   facility: "Purchase of passenger cars",
-   balance: 673.0,
-   limit: 46000.0,
-   months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
-  },
-  {
-   no: 2,
-   date: "03/02/2016",
-   facility: "Purchase of passenger cars",
-   balance: 673.0,
-   limit: 46000.0,
-   months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
-  },
-  {
-   no: 3,
-   date: "03/02/2016",
-   facility: "Purchase of passenger cars",
-   balance: 673.0,
-   limit: 46000.0,
-   months: { Jul: 0, Jun: 0, May: 0, Apr: 0, Mar: 0, Feb: 0, Jan: 0, Dec: 0 },
-  },
- ];
 
  return (
   <div className="min-h-screen">
@@ -136,55 +181,11 @@ export default function Page({ params }: { params: { id: string } }) {
 
       <SalesReport
        className="mt-32"
-       stats={[
-        { label: "Sales monthly", value: "RM130 – 150K" },
-        { label: "Profit", value: "RM5K" },
-        { label: "Expenses monthly", value: "RM30K" },
-        { label: "Rent monthly", value: "RM7,9K" },
-        { label: "Salary staff monthly", value: "10K" },
-        { label: "Salary model", value: "Daily pay" },
-        { label: "Salary per day", value: "RM60 – 70/ Day" },
-       ]}
+       stats={dummySales}
       />
 
       <EvaluationDetails
-       sections={[
-        {
-         id: 1,
-         title: "Financial Health",
-         criteria: [
-          {
-           label: "Profitability (Net income over past 6 months)",
-           value: "-",
-          },
-          {
-           label: "Cash flow stability",
-           hint: "Consistency of inflows/outflows",
-           value: "-",
-          },
-          { label: "Working Capital", value: "-", hint: "Testing" },
-          { label: "Credit History", value: "-" },
-          { label: "Others", value: "-" },
-         ],
-        },
-        {
-         id: 2,
-         title: "Business & Sales",
-         criteria: [
-          { label: "Revenue Streams", value: "-" },
-          { label: "Customer Base", value: "-" },
-          {
-           label: "Market Trends and Growth potential in industry.",
-           value: "-",
-          },
-          {
-           label: "Competitor’s positioning & market share",
-           value: "-",
-          },
-          { label: "Others", value: "-" },
-         ],
-        },
-       ]}
+       sections={dummyEvaluationDetail}
       />
 
       {/* ⬇️ Inserted Tabs above CCRIS table */}

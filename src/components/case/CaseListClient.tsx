@@ -12,8 +12,8 @@ export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
  const [page, setPage] = React.useState(1);
  const { push } = useRouter()
 
- const handleRedirect = (param: string | number) => {
-  push(`/cases/${param}`)
+ const handleRedirect = (param: string | number, stage: string) => {
+  push(`/cases/${param}?stage=${stage.toLowerCase()}`)
  }
 
  return (
@@ -25,7 +25,7 @@ export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
       <CaseTableHeader />
       <TableBody>
        {rows.map((r) => (
-        <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id)} />
+        <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id, r.stage)} />
        ))}
       </TableBody>
      </Table>

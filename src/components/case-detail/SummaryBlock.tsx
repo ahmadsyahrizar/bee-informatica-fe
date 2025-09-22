@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import KV from "./KV";
 import { useState } from "react";
 import CreditScoreDrawer from "./drawerDetail";
+import ContactInfoCard from "./Contact";
 
 export function SummaryBlock() {
  const [openDrawer, setDrawer] = useState(false)
@@ -38,6 +39,12 @@ export function SummaryBlock() {
        </div>
       </div>
      </div>
+
+
+     <div className="mt-32">
+      <ContactInfoCard />
+     </div>
+
 
      <div className="mt-[32px]">
       <div className="mb-[12px] text-18 font-semibold text-gray-900">Business Overview</div>

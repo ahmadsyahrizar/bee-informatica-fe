@@ -10,11 +10,10 @@ import { DataTable, DTColumn } from "@/components/common/DataTable";
 import logoFundingBee from "../../../../../../public/logo/fundingBeeLogo.svg"
 import phoneComplete from "../../../../../../public/icons/phone-complete.svg"
 import {
- PhoneCall,
  Download,
- CheckCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 
 // ---------------- Types ----------------
 export type CLItem = { id: string | number; text: string; checked?: boolean };
@@ -124,6 +123,8 @@ function TranscriptList({ items }: { items: TranscriptMessage[] }) {
 // ---------------- Main Page ----------------
 export default function ConfirmPhoneLogPage() {
  const [tab, setTab] = React.useState("checklist");
+ const { back, push } = useRouter()
+ const { id } = useParams()
  const refChecklist = React.useRef<HTMLDivElement | null>(null);
  const refStructured = React.useRef<HTMLDivElement | null>(null);
  const refOperator = React.useRef<HTMLDivElement | null>(null);
@@ -132,6 +133,14 @@ export default function ConfirmPhoneLogPage() {
 
  const [checked, setChecked] = React.useState(new Set(CHECKLIST.filter(c => c.checked).map(c => c.id)));
  const toggle = (id: CLItem["id"], value: boolean) => setChecked(prev => { const next = new Set(prev); value ? next.add(id) : next.delete(id); return next; });
+
+ const handleBack = () => {
+  back()
+ }
+
+ const handleNextStage = () => {
+  push(`/cases/${id}`)
+ }
 
  const onTabChange = (v: string) => {
   setTab(v);
@@ -252,8 +261,8 @@ export default function ConfirmPhoneLogPage() {
         <p className="text-[12px] text-gray-500">The voice call session has been completed. Would you like to proceed to the Meet stage?</p>
        </div>
        <div className="mt-[32px] space-y-2">
-        <Button className="w-full bg-brand-500 hover:bg-brand-600 text-white">Yes, Proceed to Next Stage</Button>
-        <Button variant="outline" className="w-full">Discard and Go Back</Button>
+        <Button onClick={handleNextStage} className="w-full bg-brand-500 hover:bg-brand-600 text-white">Yes, Proceed to Next Stage</Button>
+        <Button onClick={handleBack} variant="outline" className="w-full">Discard and Go Back</Button>
        </div>
       </div>
      </div>

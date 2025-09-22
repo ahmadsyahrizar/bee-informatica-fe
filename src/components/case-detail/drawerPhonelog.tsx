@@ -46,7 +46,7 @@ export default function PhoneChecklistDrawer({
  onChange,
 }: {
  open: boolean;
- onOpenChange: (open: boolean) => void;
+ onOpenChange: (open?: string) => void;
  data?: PhoneChecklistData;
  /** gets called whenever selection changes */
  onChange?: (checkedIds: Array<CLItem["id"]>) => void;
@@ -66,7 +66,7 @@ export default function PhoneChecklistDrawer({
  };
 
  return (
-  <Sheet open={open} onOpenChange={onOpenChange}>
+  <Sheet open={open} onOpenChange={() => onOpenChange()}>
    <SheetContent side="right" className="bg-white p-0 w-[860px] sm:w-[860px] max-w-none sm:max-w-none">
     <SheetHeader className="border-b">
      <div className="flex items-center justify-between gap-3">

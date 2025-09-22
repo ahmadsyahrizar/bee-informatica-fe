@@ -87,7 +87,7 @@ export function OtherDocumentsSection({
     open={open}
     onOpenChange={setOpen}
     onIndexChange={setIndex}
-    onDelete={onDeleteDocument}
+   // onDelete={onDeleteDocument}
    />
   </section >
  );

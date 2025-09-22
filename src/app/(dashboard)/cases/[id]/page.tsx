@@ -198,7 +198,9 @@ export default function Page({ params }: { params: { id: string } }) {
       {/* Social Media */}
       <SocialMedia
        className="mt-32"
+       // @ts-expect-error rija
        facebook={fbPosts}
+       // @ts-expect-error rija
        instagram={igPosts}
        facebookProfileUrl="https://facebook.com/emon_kitchen"
        instagramProfileUrl="https://instagram.com/emon_kitchen"

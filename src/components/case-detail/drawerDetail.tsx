@@ -8,7 +8,6 @@ import { DataTable, DTColumn } from "@/components/common/DataTable";
 import {
  FileBadge2,
  ShieldCheck,
- Shield,
  ClipboardList,
  Banknote,
  X,
@@ -167,7 +166,7 @@ export default function CreditScoreDrawer({
  return (
   <Sheet open={open} onOpenChange={onOpenChange}>
    <SheetContent side="right" className="bg-white max-h-full p-0 w-[1080px] sm:w-[1080px] max-w-none sm:max-w-none">
-    <SheetHeader className="border-b">
+    <SheetHeader className="border-b ml-24">
      <div className="flex items-center justify-between gap-3">
       <div className="flex items-center mr-6">
        <ChevronRight className="size-16" />

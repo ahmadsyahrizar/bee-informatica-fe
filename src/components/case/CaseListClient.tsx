@@ -6,9 +6,16 @@ import { CaseRow } from "./CaseRow";
 import { CaseTableHeader } from "./CaseTableHeader";
 import { PageHeader } from "./PageHeader";
 import { PaginationBar } from "./PaginationBar";
+import { useRouter } from "next/navigation";
 
 export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
  const [page, setPage] = React.useState(1);
+ const { push } = useRouter()
+
+ const handleRedirect = (param: string | number) => {
+  push(`/cases/${param}`)
+ }
+
  return (
   <>
    <PageHeader total={rows.length} />
@@ -18,7 +25,7 @@ export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
       <CaseTableHeader />
       <TableBody>
        {rows.map((r) => (
-        <CaseRow key={r.id} row={r} />
+        <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id)} />
        ))}
       </TableBody>
      </Table>

@@ -36,17 +36,16 @@ const ScheduleCell: React.FC<{ value?: string }> = ({ value }) => {
      return <div className="text-14 font-medium text-gray-900 px-[12px]">{value}</div>;
 };
 
-export const CaseRow: React.FC<{ row: CaseRowType }> = ({ row }) => {
+export const CaseRow: React.FC<{ row: CaseRowType, onRedirect: () => void }> = ({ row, onRedirect }) => {
      return (
           <TableRow className="hover:bg-white">
-               <TableCell>
+               <TableCell className="cursor-pointer" onClick={onRedirect}>
                     <PersonCell
                          name={row.clientName}
                          company={row.company}
                          caseId={row.caseId}
                          avatars={row.avatars}
                     />
-
                </TableCell>
 
                {/* Score */}

@@ -23,7 +23,7 @@ export type DTHeaderCell = {
   className?: string;
 };
 
-export function DataTable<T>({
+export function DataTable<T extends Record<string, unknown>>({
   columns,
   rows,
   dense = false,
@@ -105,7 +105,7 @@ export function DataTable<T>({
                         : "",
                   ].join(" ")}
                 >
-                  {c.cell ? c.cell(r) : (r as any)[c.key]}
+                  {c.cell ? c.cell(r) : (r)[c.key] as React.ReactNode}
                 </TableCell>
               ))}
             </TableRow>

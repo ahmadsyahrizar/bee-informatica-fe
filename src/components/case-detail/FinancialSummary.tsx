@@ -48,24 +48,24 @@ export function FinancialSummary() {
    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
     <Table>
      <TableHeader>
-      <TableRow className="bg-gray-50">
-       <TableHead>Month</TableHead>
-       <TableHead>Cash in (A)</TableHead>
-       <TableHead>Cash Out (B)</TableHead>
-       <TableHead>Net (C) (A-B)</TableHead>
-       <TableHead>Balance (D)</TableHead>
-       <TableHead>Buffer</TableHead>
+      <TableRow className="bg-gray-50 h-[42px] text-gray-500 text-12">
+       <TableHead className="pl-12">Month</TableHead>
+       <TableHead className="pl-12">Cash in (A)</TableHead>
+       <TableHead className="pl-12">Cash Out (B)</TableHead>
+       <TableHead className="pl-12">Net (C) (A-B)</TableHead>
+       <TableHead className="pl-12">Balance (D)</TableHead>
+       <TableHead className="pl-12">Buffer</TableHead>
       </TableRow>
      </TableHeader>
-     <TableBody>
+     <TableBody >
       {rows.map((r, i) => (
-       <TableRow key={i}>
-        <TableCell className="whitespace-nowrap">{r.m}</TableCell>
-        <TableCell className="text-right">{r.a} <span className="text-12 text-gray-500">RM</span></TableCell>
-        <TableCell className="text-right">{r.b} <span className="text-12 text-gray-500">RM</span></TableCell>
-        <TableCell className="text-right">{r.c} <span className="text-12 text-gray-500">RM</span></TableCell>
-        <TableCell className="text-right">{r.d} <span className="text-12 text-gray-500">RM</span></TableCell>
-        <TableCell className="text-right">{r.e}</TableCell>
+       <TableRow className="h-64" key={i}>
+        <TableCell className=" pl-12 whitespace-nowrap">{r.m}</TableCell>
+        <TableCell className="pl-12 text-14">{r.a} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{r.b} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{r.c} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{r.d} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{r.e}</TableCell>
        </TableRow>
       ))}
      </TableBody>

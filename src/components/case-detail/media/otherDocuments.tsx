@@ -36,7 +36,7 @@ export function OtherDocumentsSection({
 
  return (
   <section className={className + " mt-[32px]"} >
-   <h3 className="text-[18px] font-semibold mb-4">{title}</h3>
+   <h3 className="text-[18px] font-semibold mb-12">{title}</h3>
 
    <div className="grid grid-cols-1 lg:grid-cols-2  gap-8">
     {documents.map((doc, i) => (

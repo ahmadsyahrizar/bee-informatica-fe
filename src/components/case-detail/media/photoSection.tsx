@@ -31,10 +31,10 @@ export function PhotosSection({
 
  return (
   <section className={className + " mt-[32px]"}>
-   <div className="mb-4 flex items-center justify-between">
+   <div className="mb-16 flex items-center justify-between">
     <h3 className="text-[18px] font-semibold">{title}</h3>
     <Button variant="outline" className="gap-2" onClick={onUploadClick}>
-     <Upload className="h-4 w-4" /> Upload
+     <Upload className="size-16" /> Upload
     </Button>
    </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export default function ContactInfoCard() {
     </div>
    </DialogTrigger>
 
+   {/* Modal */}
    <DialogContent className="sm:max-w-[425px] p-24 rounded-xl bg-white">
     <DialogHeader>
      <DialogTitle>Contact Information</DialogTitle>
@@ -65,17 +66,26 @@ export default function ContactInfoCard() {
     </div>
 
     <div className="flex justify-end gap-2">
-     <Button className="p-24" variant="outline">Cancel</Button>
-     <Button
-      className="p-24 text-white"
-      onClick={() => {
-       // For now just close, values already set in state
-      }}
-     >
-      Save
-     </Button>
+     <DialogFooter>
+      <DialogClose asChild>
+       <Button className="p-24" variant="outline">Cancel</Button>
+      </DialogClose>
+
+      <DialogClose asChild>
+
+       <Button
+        className="p-24 text-white"
+        onClick={() => {
+
+         // For now just close, values already set in state
+        }}
+       >
+        Save
+       </Button>
+      </DialogClose>
+     </DialogFooter>
     </div>
    </DialogContent>
-  </Dialog>
+  </Dialog >
  );
 }

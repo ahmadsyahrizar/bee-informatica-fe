@@ -7,20 +7,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable, DTColumn } from "@/components/common/DataTable";
-import logoFundingBee from "../../../../../../public/logo/fundingBeeLogo.svg"
-import phoneComplete from "../../../../../../public/icons/phone-complete.svg"
-import {
- Download,
-} from "lucide-react";
+import logoFundingBee from "../../../../../../public/logo/fundingBeeLogo.svg";
+import phoneDone from "../../../../../../public/icons/phone-done.svg";
+import exampleTranscription from "../../../../../../public/icons/example-transcription.svg";
+import { Download } from "lucide-react";
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-// ---------------- Types ----------------
+/* ---------------- Types ---------------- */
 export type CLItem = { id: string | number; text: string; checked?: boolean };
 export type KV = { label: string; value: React.ReactNode };
 export type TranscriptMessage = { role: "Staff" | "Client"; time?: string; text: string };
 
-// --------------- Demo data ---------------
+/* --------------- Demo data --------------- */
 const CHECKLIST: CLItem[] = [
  { id: 1, text: "How much can you commit to repay per month?", checked: true },
  { id: 2, text: "If we offered X amount for 1 year, would you accept?", checked: true },
@@ -68,11 +67,9 @@ const TRANSCRIPT: TranscriptMessage[] = [
  { role: "Staff", time: "0:22", text: "We offer loans ranging from RM1,000 to RM30,000. The amount you can apply for will depend on factors such as your income, credit score, and other financial information." },
 ];
 
-// ---------------- Small bits ----------------
+/* ---------------- Small bits ---------------- */
 function SectionHeader({ title }: { title: string }) {
- return (
-  <div className="font-semibold text-gray-900 mb-2 mt-6">{title}</div>
- );
+ return <div className="font-semibold text-gray-900 mb-2 mt-6">{title}</div>;
 }
 
 function StructuredTable({ rows }: { rows: KV[] }) {
@@ -101,16 +98,16 @@ function TranscriptList({ items }: { items: TranscriptMessage[] }) {
       <li key={i} className="flex items-start gap-3">
        <Avatar className={`h-24 w-24 mt-1 ${m.role === "Staff" ? "bg-violet-100" : "bg-amber-100"}`}>
         <AvatarImage src="" />
-        <AvatarFallback className={`${m.role === "Staff" ? "text-violet-700" : "text-amber-700"} text-[10px]`}>{m.role === "Staff" ? "S" : "C"}</AvatarFallback>
+        <AvatarFallback className={`${m.role === "Staff" ? "text-violet-700" : "text-amber-700"} text-[10px]`}>
+         {m.role === "Staff" ? "S" : "C"}
+        </AvatarFallback>
        </Avatar>
        <div>
         <div className="mb-1 text-[11px] text-gray-500 font-medium">
          <span className="text-gray-900 font-semibold">{m.role}</span>
          {m.time ? <span className="ml-1">{m.time}</span> : null}
         </div>
-        <div className="mb-24 rounded-lg bg-muted/30 text-sm text-gray-700">
-         {m.text}
-        </div>
+        <div className="mb-24 rounded-lg bg-muted/30 text-sm text-gray-700">{m.text}</div>
        </div>
       </li>
      ))}
@@ -120,27 +117,69 @@ function TranscriptList({ items }: { items: TranscriptMessage[] }) {
  );
 }
 
-// ---------------- Main Page ----------------
+/* ---------------- Main Page ---------------- */
 export default function ConfirmPhoneLogPage() {
  const [tab, setTab] = React.useState("checklist");
- const { back, push } = useRouter()
- const { id } = useParams()
+ const { push } = useRouter();
+ const { id } = useParams();
+ const params = useSearchParams();
+
+ // stage: phone | meet | review1 | final
+ const stageParam = (params.get("stage") ?? "phone").toLowerCase();
+ const isPhone = stageParam === "phone";
+ const isMeet = stageParam === "meet";
+ const isReview1 = stageParam === "review1";
+ const isFinal = stageParam === "final";
+
+ // dynamic labels
+ const stageLabel =
+  isPhone ? "Phone" : isMeet ? "Meet" : isReview1 ? "1st Review" : "Final Review";
+
+ const pageTitle =
+  isPhone ? "Confirm Phone Log" :
+   isMeet ? "Confirm Meet Log" :
+    isReview1 ? "Confirm 1st Review Notes" :
+     "Confirm Final Review Notes";
+
+ const recordingHeader =
+  isPhone ? "Voice Call Recording" :
+   isMeet ? "Video Call Recording" :
+    "Review Attachments";
+
+ const successTitle =
+  isPhone ? "Transcription successfully uploaded" :
+   isMeet ? "Recording successfully uploaded" :
+    isReview1 ? "Review notes saved" :
+     "Final review notes saved";
+
+ // refs for tab scroll
  const refChecklist = React.useRef<HTMLDivElement | null>(null);
  const refStructured = React.useRef<HTMLDivElement | null>(null);
  const refOperator = React.useRef<HTMLDivElement | null>(null);
- const refVideo = React.useRef<HTMLDivElement | null>(null);
+ const refRecording = React.useRef<HTMLDivElement | null>(null);
  const refTranscript = React.useRef<HTMLDivElement | null>(null);
 
- const [checked, setChecked] = React.useState(new Set(CHECKLIST.filter(c => c.checked).map(c => c.id)));
- const toggle = (id: CLItem["id"], value: boolean) => setChecked(prev => { const next = new Set(prev); value ? next.add(id) : next.delete(id); return next; });
+ // checklist ticks
+ const [checked, setChecked] = React.useState(
+  new Set(CHECKLIST.filter(c => c.checked).map(c => c.id))
+ );
+ const toggle = (cid: CLItem["id"], value: boolean) =>
+  setChecked(prev => {
+   const next = new Set(prev);
+   value ? next.add(cid) : next.delete(cid);
+   return next;
+  });
 
+ // nav handlers
  const handleBack = () => {
-  back()
- }
+  // keep stage context on back
+  push(`/cases/${id}?stage=${stageParam}`);
+ };
 
  const handleNextStage = () => {
-  push(`/cases/${id}`)
- }
+  // trigger confirmation state on case details for this stage
+  push(`/cases/${id}?stage=${stageParam}&status=confirmation`);
+ };
 
  const onTabChange = (v: string) => {
   setTab(v);
@@ -148,15 +187,21 @@ export default function ConfirmPhoneLogPage() {
    checklist: refChecklist.current,
    structured: refStructured.current,
    operator: refOperator.current,
-   video: refVideo.current,
+   recording: refRecording.current,
    transcript: refTranscript.current,
   };
-  requestAnimationFrame(() => map[v]?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  requestAnimationFrame(() =>
+   map[v]?.scrollIntoView({ behavior: "smooth", block: "start" })
+  );
  };
+
+ // which tabs to show: recording/transcript only for phone/meet
+ const showRecording = isPhone || isMeet;
+ const showTranscript = isPhone || isMeet;
 
  return (
   <div className="min-h-screen bg-white">
-   {/* Top brand bar (simple) */}
+   {/* Top brand bar */}
    <div className="border-b">
     <div className="mx-auto max-w-[1100px] py-[22px] flex items-center justify-center">
      <Image src={logoFundingBee} width={154} height={27} alt="funding-bee" />
@@ -164,16 +209,32 @@ export default function ConfirmPhoneLogPage() {
    </div>
 
    <div className="mx-auto max-w-[1100px] px-6 pt-[40px] pb-14">
-    <div className="text-[18px] font-semibold text-gray-900 mb-2">Confirm Phone Log</div>
+    <div className="text-[18px] font-semibold text-gray-900 mb-2">
+     {pageTitle}
+    </div>
 
     {/* Tabs */}
     <Tabs value={tab} onValueChange={onTabChange}>
      <TabsList className="h-9 bg-transparent p-0 gap-6 border-b border-t rounded-none">
-      <TabsTrigger value="checklist" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">Checklist</TabsTrigger>
-      <TabsTrigger value="structured" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">Structured Notes</TabsTrigger>
-      <TabsTrigger value="operator" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">Operator Notes</TabsTrigger>
-      <TabsTrigger value="video" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">Video Call Recording</TabsTrigger>
-      <TabsTrigger value="transcript" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">Transcript</TabsTrigger>
+      <TabsTrigger value="checklist" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">
+       Checklist
+      </TabsTrigger>
+      <TabsTrigger value="structured" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">
+       Structured Notes
+      </TabsTrigger>
+      <TabsTrigger value="operator" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">
+       {isReview1 || isFinal ? `${stageLabel} Notes` : "Operator Notes"}
+      </TabsTrigger>
+      {showRecording && (
+       <TabsTrigger value="recording" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">
+        {recordingHeader}
+       </TabsTrigger>
+      )}
+      {showTranscript && (
+       <TabsTrigger value="transcript" className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:text-brand-600">
+        Transcript
+       </TabsTrigger>
+      )}
      </TabsList>
     </Tabs>
 
@@ -212,57 +273,72 @@ export default function ConfirmPhoneLogPage() {
        <StructuredTable rows={STRUCTURED} />
       </div>
 
-      {/* Operator Notes */}
+      {/* Operator / Reviewer Notes */}
       <br />
       <div ref={refOperator} className="scroll-mt-[120px]">
-       <SectionHeader title="Operator Notes" />
+       <SectionHeader title={isReview1 || isFinal ? `${stageLabel} Notes` : "Operator Notes"} />
        <div className="rounded-xl border bg-white p-12 text-sm leading-relaxed text-gray-700">
-        The call between the Admin and Borrower took place on [Date and Time]. The Borrower is in the process of confirming the desired loan amount and repayment terms. The Admin provided information regarding the loan conditions, interest rates, and required procedures. The Borrower stated they will consider and provide an answer within [agreed‑upon timeframe]. The Admin reminded the Borrower to follow up once a decision is made.
+        {isReview1 || isFinal
+         ? `Summary of ${stageLabel.toLowerCase()} assessment goes here. Add reviewer remarks, risk flags, and required follow-ups.`
+         : "The call between the Admin and Borrower took place on [Date and Time]..."}
        </div>
       </div>
 
-      {/* Video Call Recording */}
-      <br />
-      <div ref={refVideo} className="scroll-mt-[120px]">
-       <SectionHeader title="Voice Call Recording" />
-       <div className="rounded-xl border bg-white p-12">
-        {/* simple audio bar */}
-        <div className="w-full h-10 rounded-full bg-gray-100 flex items-center px-4">
-         <div className="h-1.5 bg-brand-500 rounded-full" style={{ width: "32%" }} />
+      {/* Recording (only for phone/meet) */}
+      {showRecording && (
+       <>
+        <br />
+        <div ref={refRecording} className="scroll-mt-[120px]">
+         <SectionHeader title={recordingHeader} />
+         <div className="rounded-xl border bg-white p-12">
+          <div className="w-full h-10 rounded-full bg-gray-100 flex items-center px-4">
+           <div className="h-1.5 bg-brand-500 rounded-full" style={{ width: "32%" }} />
+          </div>
+          <div className="mt-2 text-[11px] text-gray-500 flex justify-between">
+           <span>02:11</span>
+           <span>30:00</span>
+          </div>
+         </div>
         </div>
-        <div className="mt-2 text-[11px] text-gray-500 flex justify-between">
-         <span>02:11</span>
-         <span>30:00</span>
-        </div>
-       </div>
-      </div>
+       </>
+      )}
 
-      {/* Transcript */}
-      <br />
-      <div ref={refTranscript} className="scroll-mt-[120px]">
-       <div className="flex justify-between items-center">
-        <SectionHeader title="Transcript" />
-        <div className="flex justify-end">
-         <Button variant="outline" size="icon" className="h-24 w-24"><Download className="size-16" /></Button>
+      {/* Transcript (only for phone/meet) */}
+      {showTranscript && (
+       <>
+        <br />
+        <div ref={refTranscript} className="scroll-mt-[120px]">
+         <div className="flex justify-between items-center">
+          <SectionHeader title="Transcript" />
+          <div className="flex justify-end">
+           <Button variant="outline" size="icon" className="h-24 w-24">
+            <Download className="size-16" />
+           </Button>
+          </div>
+         </div>
+         <TranscriptList items={TRANSCRIPT} />
         </div>
-       </div>
-       <TranscriptList items={TRANSCRIPT} />
-      </div>
+       </>
+      )}
      </div>
 
      {/* Right rail */}
      <div className="space-y-4">
-      <div className="rounded-[24px] border border-gray-200  bg-gray-50 p-32 mt-[38px]">
+      <div className="rounded-[24px] border border-gray-200 bg-gray-50 p-32 mt-[38px]">
        <div className="mx-auto mb-[32px] grid place-items-center">
-        <Image src={phoneComplete} width={80} height={80} alt="phone-complete" />
+        <Image src={phoneDone} width={80} height={80} alt="stage-complete" />
        </div>
        <div className="text-center">
-        <div className="font-semibold text-gray-900 mb-[12px]">Phone Call Completed</div>
-        <p className="text-[12px] text-gray-500">The voice call session has been completed. Would you like to proceed to the Meet stage?</p>
+        <div className="font-semibold text-gray-900 mb-[12px]">{successTitle}</div>
+        <Image width={268} height={74} src={exampleTranscription} alt="attachment" />
        </div>
        <div className="mt-[32px] space-y-2">
-        <Button onClick={handleNextStage} className="w-full bg-brand-500 hover:bg-brand-600 text-white">Yes, Proceed to Next Stage</Button>
-        <Button onClick={handleBack} variant="outline" className="w-full">Discard and Go Back</Button>
+        <Button onClick={handleNextStage} className="w-full bg-brand-500 hover:bg-brand-600 text-white">
+         Save Log
+        </Button>
+        <Button onClick={handleBack} variant="outline" className="w-full">
+         Discard and Go Back
+        </Button>
        </div>
       </div>
      </div>

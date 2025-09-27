@@ -7,13 +7,15 @@ export type Stage =
  | "Rejected";
 
 export type CaseRowType = {
- id: string;
+ id: string | number;
  clientName: string;
  caseId: string;
  company: string;
- stage: Stage;
- schedule?: string; // ISO or display string
- score?: number; // 0-100
+ stage: string;
+ schedule?: string;
+ score?: number;
  attentionRequired?: boolean;
  avatars?: { src?: string; name: string }[];
+ appliedLoanAmount?: number;   // in RM
+ approvedLoanAmount?: number;  // in RM
 };

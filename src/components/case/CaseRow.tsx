@@ -1,13 +1,10 @@
 import * as React from "react";
 import { AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { CaseRowType } from "@/types/case";
 import { ScoreBubble } from "./atoms/ScoreBubble";
-import iconCalendar from "../../../public/icons/addScheduleIcon.svg";
 import { StageBadge } from "./atoms/StageBadge";
 import { ActionButton } from "./ActionButton";
-import Image from "next/image";
 
 /* ------------------------ helpers ------------------------ */
 const formatRM = (n?: number) =>

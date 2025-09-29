@@ -2,10 +2,7 @@
 import { DetailHeader } from "./DetailHeader";
 import KV from "./KV";
 import { useState } from "react";
-import CreditScoreDrawer from "./drawerDetail";
 import ContactInfoCard from "./Contact";
-import exampleSelfie from "../../../public/images/example-selfie.jpg";
-import exampleKTP from "../../../public/images/example-ktp.jpg";
 import Image from "next/image";
 import { Badge } from "../ui/badge";
 import AddressVerificationModal from "./AddressVerifModal";
@@ -35,10 +32,10 @@ export function SummaryBlock() {
        </div>
        <div className="flex gap-8">
         <div className="w-[100px] h-[100px] aspect-square">
-         <Image alt="selfie" width={100} height={100} src={exampleSelfie} />
+         <Image alt="selfie" width={100} height={100} className="rounded-md" src={"https://placehold.co/100x100.png"} />
         </div>
         <div className="w-[150px] h-[100px] aspect-auto">
-         <Image alt="ktp" width={150} height={100} src={exampleKTP} />
+         <Image alt="ktp" width={150} height={100} className="rounded-md" src={"https://placehold.co/150x100.png"} />
         </div>
        </div>
       </div>

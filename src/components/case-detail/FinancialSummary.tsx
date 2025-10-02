@@ -1,6 +1,7 @@
 "use client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import KV from "./KV";
+import { AiGradientHeading } from "./GradientHeading";
 
 const dataInsights =
  [
@@ -43,8 +44,8 @@ export function FinancialSummary() {
   { m: "February 2025", a: "102,880.77", b: "102,447.98", c: "432.79", d: "15,341.59", e: "9.90" },
  ];
  return (
-  <section className="mt-24">
-   <div className="mb-12 text-14 font-semibold text-gray-900">AI Financial Summary ✨</div>
+  <section className="mt-24 scroll-mt-28 lg:scroll-mt-32" id="ai-financial-summary">
+   <AiGradientHeading id="ai-highlight">AI Financial Summary</AiGradientHeading>
    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
     <Table>
      <TableHeader>

@@ -18,7 +18,7 @@ export default function SalesReport({
  className?: string;
 }) {
  return (
-  <section className={cn("space-y-12", className)}>
+  <section id="sales-report" className={cn("space-y-12 scroll-mt-28 lg:scroll-mt-32", className)}>
    <h3 className="text-20 font-semibold text-gray-900">Sales Report</h3>
 
    <div className="rounded-xl border border-gray-200 bg-white/70 p-16">

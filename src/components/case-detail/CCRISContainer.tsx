@@ -14,7 +14,7 @@ export function CCRISContainer({
   companyRows?: CCRISRow;
 }) {
   return (
-    <section className="w-full mt-32">
+    <section className="w-full mt-32 scroll-mt-28 lg:scroll-mt-32" id="ccris">
       <h2 className="text-[18px] text-gray-900 font-semibold tracking-tight">CCRIS</h2>
 
       <Tabs defaultValue="individual" className="mt-4 w-full">

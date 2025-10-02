@@ -12,8 +12,7 @@ export function PhotosSection({
  title = "Photos",
  photos,
  onUploadClick,
- onDeletePhoto, // optional
- className = "",
+ onDeletePhoto, // optional  
 }: {
  title?: string;
  photos: PhotoItem[];
@@ -30,7 +29,7 @@ export function PhotosSection({
  };
 
  return (
-  <section className={className + " mt-[32px]"}>
+  <section id="photos" className="mt-[32px] scroll-mt-28 lg:scroll-mt-32">
    <div className="mb-16 flex items-center justify-between">
     <h3 className="text-[18px] font-semibold">{title}</h3>
     <Button variant="outline" className="gap-2" onClick={onUploadClick}>

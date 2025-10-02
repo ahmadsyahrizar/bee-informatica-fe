@@ -19,7 +19,8 @@ export function SummaryBlock() {
    <DetailHeader
     caseId="CS-1234"
    // onUpload={async (file) => { }}
-   />   <section className="grid grid-cols-12 gap-16 mt-[24px]">
+   />
+   <section className="grid grid-cols-12 gap-16 mt-[24px] scroll-mt-28 lg:scroll-mt-32" id="overview">
     <div className="col-span-12 xl:col-span-12">
      <div className="flex items-start justify-between gap-16">
       <div className="min-w-0">

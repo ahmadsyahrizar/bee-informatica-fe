@@ -40,14 +40,12 @@ export function SocialMedia({
   instagram,
   facebookProfileUrl,
   instagramProfileUrl,
-  className = "",
   onUpdateProfileUrl, // optional callback to persist
 }: {
   facebook: SocialPost[];
   instagram: SocialPost[];
   facebookProfileUrl?: string;
   instagramProfileUrl?: string;
-  className?: string;
   onUpdateProfileUrl?: (platform: Platform, url: string) => void;
 }) {
   // modal state
@@ -67,7 +65,7 @@ export function SocialMedia({
   };
 
   return (
-    <section className={className}>
+    <section id="social-media" className="mt-32 scroll-mt-28 lg:scroll-mt-32">
       <h2 className="text-[18px] font-semibold tracking-tight mb-6">Social Media</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

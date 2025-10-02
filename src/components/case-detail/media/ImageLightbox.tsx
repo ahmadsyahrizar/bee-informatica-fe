@@ -18,7 +18,7 @@ export function ImageLightbox({
  title = "Photos",
 }: {
  items: LightboxItem[];
- index: number;                       // current index
+ index: number;
  open: boolean;
  onOpenChange: (open: boolean) => void;
  onIndexChange: (nextIndex: number) => void;
@@ -43,10 +43,10 @@ export function ImageLightbox({
        <Button
         variant="ghost"
         size="sm"
-        className="text-red-300 hover:text-red-400 hover:bg-white/10"
+        className="p-16 text-red-300 hover:text-red-400 hover:bg-white/10"
         onClick={() => onDelete(item)}
        >
-        <Trash2 className="h-4 w-4 mr-1" /> Delete
+        <Trash2 className="size-20 mr-1" /> Delete
        </Button>
       ) : null}
       <Button
@@ -55,7 +55,7 @@ export function ImageLightbox({
        className="text-white hover:bg-white/10"
        onClick={() => onOpenChange(false)}
       >
-       <X className="h-5 w-5" />
+       <X className="size-20" />
       </Button>
      </div>
     </div>

@@ -16,8 +16,7 @@ export type DocumentItem = LightboxItem & {
 export function OtherDocumentsSection({
  title = "Other Documents",
  documents,
- className = "",
- onDeleteDocument, // optional
+ // onDeleteDocument, // optional
 }: {
  title?: string;
  documents: DocumentItem[];
@@ -35,7 +34,7 @@ export function OtherDocumentsSection({
  };
 
  return (
-  <section className={className + " mt-[32px]"} >
+  <section id="documents" className="mb-[32px] mt-[32px] scroll-mt-28 lg:scroll-mt-32" >
    <h3 className="text-[18px] font-semibold mb-12">{title}</h3>
 
    <div className="grid grid-cols-1 lg:grid-cols-2  gap-8">

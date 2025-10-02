@@ -49,7 +49,6 @@ export default function Page({ params }: { params: { id: string } }) {
 
       {/* Social Media */}
       <SocialMedia
-       className="mt-32"
        // @ts-expect-error rija
        facebook={fbPosts}
        // @ts-expect-error rija
@@ -59,14 +58,12 @@ export default function Page({ params }: { params: { id: string } }) {
       />
 
       <PhotosSection
-       className="mt-10"
        photos={photos}
        onUploadClick={() => console.log("open uploader")}
        onDeletePhoto={(p) => console.log("delete photo", p)}
       />
 
       <OtherDocumentsSection
-       className="mt-10 mb-32"
        documents={documents}
        onDeleteDocument={(d) => console.log("delete doc", d)}
       />

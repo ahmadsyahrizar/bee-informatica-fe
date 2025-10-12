@@ -6,7 +6,7 @@ export const CaseTableHeader = () => (
  <TableHeader className="bg-gray-50 border-gray-200 h-[44px]">
   <TableRow>
    <TableHead className="text-[12px] text-gray-500 font-semibold w-[28%]">
-    Case
+    Application
    </TableHead>
 
    <TableHead className="text-[12px] text-gray-500 font-semibold w-[10%] text-left">
@@ -17,19 +17,19 @@ export const CaseTableHeader = () => (
     Stage
    </TableHead>
 
-   <TableHead className="text-[12px] text-gray-500 font-semibold w-[14%] text-right">
+   <TableHead className="text-[12px] text-gray-500 font-semibold w-[14%] text-left">
     Applied Loan Amount
    </TableHead>
 
-   <TableHead className="text-[12px] text-gray-500 font-semibold w-[16%] text-right">
+   <TableHead className="text-[12px] text-gray-500 font-semibold w-[16%] text-left">
     Approved Loan Amount
    </TableHead>
-   {/* 
-   <TableHead className="text-[12px] text-gray-500 font-semibold w-[14%]">
-    Schedule
-   </TableHead> */}
 
-   <TableHead className="text-[12px] text-right text-gray-500 font-semibold w-[14%]">
+   <TableHead className="text-[12px] text-gray-500 font-semibold w-[14%]">
+    Registered at
+   </TableHead>
+
+   <TableHead className="text-[12px] text-left text-gray-500 font-semibold w-[14%]">
     {/* actions */}
    </TableHead>
   </TableRow>

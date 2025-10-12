@@ -1,196 +1,117 @@
 "use client";
+
 import * as React from "react";
 import { Table, TableBody } from "@/components/ui/table";
-import { CaseRowType } from "@/types/case";
+import { CaseRowPagination, CaseRowType } from "@/types/case";
 import { CaseRow } from "./CaseRow";
 import { CaseTableHeader } from "./CaseTableHeader";
-import { PageHeader } from "./PageHeader";
+import PageHeader from "./PageHeader";
 import { PaginationBar } from "./PaginationBar";
 import { useRouter } from "next/navigation";
-
-/* ---------------------------- helpers & types ---------------------------- */
+import { useSearchParams } from "next/navigation";
 
 type StageFilter =
   | "all-stages"
   | "phone"
-  | "meet"
+  | "video"
   | "review1"
   | "final"
   | "approved"
   | "rejected";
 
-type DateFilter = "all-dates" | "today" | "week" | "month";
-type ScoreFilter = "all-scores" | ">=80" | "60-79" | "<60";
 
-type SortBy =
-  | "updated-newest"
-  | "updated-oldest"
-  | "score-high"
-  | "score-low";
+type SortBy = "updated-newest" | "updated-oldest"
 
 const ROWS_PER_PAGE = 10;
 
-const stageMap: Record<Exclude<StageFilter, "all-stages">, string> = {
-  phone: "Phone",
-  meet: "Meet",
-  review1: "1st Review",
-  final: "Final Review",
-  approved: "Approved",
-  rejected: "Rejected",
-};
-
-function toDate(s?: string | null): Date | null {
-  if (!s) return null;
-  // Robust parsing: "2025/09/03 10:00" -> "2025-09-03T10:00"
-  const isoish = s.replaceAll("/", "-").replace(" ", "T");
-  const d = new Date(isoish);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-/* --------------------------------- comp --------------------------------- */
-
-export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
-  const { push } = useRouter();
-
-  // Controls
-  const [search, setSearch] = React.useState("");
-  const [stage, setStage] = React.useState<StageFilter>("all-stages");
-  const [dateRange, setDateRange] = React.useState<DateFilter>("all-dates");
-  const [score, setScore] = React.useState<ScoreFilter>("all-scores");
-  const [sortBy, setSortBy] = React.useState<SortBy>("updated-newest");
-  console.log({})
-
-  // Debounced search (so typing is smooth)
-  const [debouncedSearch, setDebouncedSearch] = React.useState(search);
+const CaseListClient: React.FC<{
+  rows: CaseRowType[];
+  pagination: CaseRowPagination;
+  currentFilters: {
+    q?: string;
+    stage?: string;
+    ob?: string;
+    page?: number;
+    size?: number;
+    dateRange?: string;
+    score?: string;
+  };
+}> = ({ rows, pagination, currentFilters }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [inputSearch, setInputSearch] = React.useState(currentFilters.q ?? "");
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 250);
-    return () => clearTimeout(t);
-  }, [search]);
+    setInputSearch(currentFilters.q ?? "");
+  }, [currentFilters.q]);
 
-  const handleRedirect = (param: string | number, s: string) => {
-    console.log({ s })
-    push(`/cases/${param}?stage=phone`);
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      if ((currentFilters.q ?? "") === (inputSearch ?? "")) return;
+      const p = new URLSearchParams(Array.from(searchParams.entries()));
+      if (inputSearch) p.set("q", inputSearch);
+      else p.delete("q");
+      p.set("page", "1");
+      router.push(`/cases?${p.toString()}`);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [currentFilters.q, inputSearch, router, searchParams]);
+
+  const updateParam = (key: string, value?: string | number | null) => {
+    const p = new URLSearchParams(Array.from(searchParams.entries()));
+    if (value === undefined || value === null || value === "") p.delete(key);
+    else p.set(key, String(value));
+    if (key !== "page") p.set("page", "1");
+    router.push(`/cases?${p.toString()}`);
   };
 
-  // Derived data
-  const now = React.useMemo(() => new Date(), []);
-  const filteredSorted = React.useMemo(() => {
-    let list = rows.slice();
+  const onStageChange = (v: StageFilter) => {
+    if (v === "all-stages") updateParam("stage", undefined);
+    else updateParam("stage", v);
+  };
 
-    // Search (by Case ID or Client Name)
-    if (debouncedSearch) {
-      list = list.filter((r) => {
-        const byId = r.caseId?.toLowerCase().includes(debouncedSearch);
-        const byName = r.clientName?.toLowerCase().includes(debouncedSearch);
-        return !!(byId || byName);
-      });
-    }
+  const onSortByChange = (v: SortBy) => {
+    let ob = "newest";
+    if (v === "updated-newest") ob = "newest";
+    if (v === "updated-oldest") ob = "oldest";
+    updateParam("ob", ob);
+  };
 
-    // Stage filter
-    if (stage !== "all-stages") {
-      const target = stageMap[stage];
-      list = list.filter((r) => r.stage.toLowerCase() === target.toLowerCase());
-    }
+  const onSizeChange = (newSize: number) => {
+    updateParam("size", newSize);
+  };
 
-    // Date filter (use `schedule` when present)
-    if (dateRange !== "all-dates") {
-      list = list.filter((r) => {
-        const d = toDate(r.schedule);
-        if (!d) return false;
-        if (dateRange === "today") return isSameDay(d, now);
-        if (dateRange === "week") {
-          const diffMs = now.getTime() - d.getTime();
-          const sevenDays = 7 * 24 * 60 * 60 * 1000;
-          return diffMs >= 0 && diffMs <= sevenDays;
-        }
-        if (dateRange === "month") {
-          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-        }
-        return true;
-      });
-    }
+  const onPrev = () => {
+    const newPage = Math.max(1, (currentFilters.page ?? 1) - 1);
+    updateParam("page", newPage);
+  };
+  const onNext = () => {
+    const newPage = Math.min((pagination.total_pages ?? 1), (currentFilters.page ?? 1) + 1);
+    updateParam("page", newPage);
+  };
 
-    // Score filter
-    if (score !== "all-scores") {
-      list = list.filter((r) => {
-        const sc = typeof r.score === "number" ? r.score : null;
-        if (sc === null) return false;
-        if (score === ">=80") return sc >= 80;
-        if (score === "60-79") return sc >= 60 && sc <= 79;
-        if (score === "<60") return sc < 60;
-        return true;
-      });
-    }
-
-    // Sorting
-    list.sort((a, b) => {
-      const da = toDate(a.schedule);
-      const db = toDate(b.schedule);
-      const sa = typeof a.score === "number" ? a.score : -Infinity;
-      const sb = typeof b.score === "number" ? b.score : -Infinity;
-
-      switch (sortBy) {
-        case "updated-newest": {
-          if (da && db) return db.getTime() - da.getTime();
-          if (da && !db) return -1; // has date first
-          if (!da && db) return 1;
-          // fallback by id desc (treat id numeric when possible)
-          return String(b.id).localeCompare(String(a.id), undefined, { numeric: true });
-        }
-        case "updated-oldest": {
-          if (da && db) return da.getTime() - db.getTime();
-          if (da && !db) return 1; // no date first
-          if (!da && db) return -1;
-          return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
-        }
-        case "score-high":
-          return (isFinite(sb) ? sb : -Infinity) - (isFinite(sa) ? sa : -Infinity);
-        case "score-low":
-          return (isFinite(sa) ? sa : Infinity) - (isFinite(sb) ? sb : Infinity);
-        default:
-          return 0;
-      }
-    });
-
-    return list;
-  }, [rows, debouncedSearch, stage, dateRange, score, sortBy, now]);
-
-  // Pagination
-  const [page, setPage] = React.useState(1);
-  React.useEffect(() => {
-    // Reset to page 1 when filters/search/sort change
-    setPage(1);
-  }, [debouncedSearch, stage, dateRange, score, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / ROWS_PER_PAGE));
-  const pageSlice = filteredSorted.slice((page - 1) * ROWS_PER_PAGE, page * ROWS_PER_PAGE);
-
-  console.log({ pageSlice })
+  const handleRedirect = (param: string | number, s: string) => {
+    router.push(`/cases/${param}?stage=${encodeURIComponent(s)}`);
+  };
 
   return (
     <>
       <PageHeader
-        total={filteredSorted.length}
-        // controls
-        search={search}
-        onSearchChange={setSearch}
-        stage={stage}
-        onStageChange={setStage}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-        score={score}
-        onScoreChange={setScore}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
+        total={rows.length}
+        search={inputSearch}
+        onSearchChange={setInputSearch}
+        stage={(currentFilters.stage as StageFilter) ?? "all-stages"}
+        onStageChange={onStageChange}
+        sortBy={
+          currentFilters.ob === "oldest"
+            ? ("updated-oldest" as SortBy)
+            : currentFilters.ob === "score_desc"
+              ? ("score-high" as SortBy)
+              : currentFilters.ob === "score_asc"
+                ? ("score-low" as SortBy)
+                : ("updated-newest" as SortBy)
+        }
+        onSortByChange={(v: SortBy) => onSortByChange(v)}
       />
 
       <div className="mt-[32px] rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -198,14 +119,11 @@ export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
           <Table className="w-full max-w-[1216px]">
             <CaseTableHeader />
             <TableBody>
-              {pageSlice.map((r) => (
-                <CaseRow
-                  row={r}
-                  key={r.id}
-                  onRedirect={() => handleRedirect(r.id, r.stage)}
-                />
-              ))}
-              {pageSlice.length === 0 && (
+              {rows.length > 0 ? (
+                rows.map((r) => (
+                  <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id, r.stage)} />
+                ))
+              ) : (
                 <tr>
                   <td className="py-12 text-center text-sm text-gray-500" colSpan={5}>
                     No results match your filters.
@@ -218,13 +136,31 @@ export const CaseListClient: React.FC<{ rows: CaseRowType[] }> = ({ rows }) => {
 
         <div className="px-20 pb-16">
           <PaginationBar
-            page={page}
-            totalPages={totalPages}
-            onPrev={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+            page={currentFilters.page ?? pagination.current_page}
+            totalPages={pagination.total_pages}
+            onPrev={onPrev}
+            onNext={onNext}
           />
+          <div className="mt-4 flex gap-2 items-center">
+            <div>
+              <label className="text-sm text-gray-500 mr-2">Rows</label>
+              <select
+                defaultValue={String(currentFilters.size ?? pagination.page_size ?? ROWS_PER_PAGE)}
+                onChange={(e) => onSizeChange(Number(e.target.value))}
+                className="border rounded px-2 py-1"
+              >
+                {[5, 10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </>
   );
 };
+
+export default CaseListClient;

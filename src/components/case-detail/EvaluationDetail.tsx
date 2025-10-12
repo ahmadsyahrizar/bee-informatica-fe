@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Info, Pencil, CheckIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import isStringValue from "@/lib/utils/isStringHelper";
 
-/* ---------------- Types ---------------- */
 type Criterion = {
   label: string;
   value?: string | React.ReactNode;
@@ -23,12 +23,6 @@ type Props = {
   onChange?: (next: Section[]) => void;
 };
 
-/* ------------- Small helpers ------------- */
-function isStringValue(v: string | React.ReactNode | undefined): v is string {
-  return typeof v === "string" || typeof v === "undefined";
-}
-
-/* ------------- Editable cell ------------- */
 function EditableValueCell({
   value,
   canEdit,

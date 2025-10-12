@@ -1,8 +1,57 @@
-import { fetchCases } from "@/lib/api/cases";
-import { CaseListClient } from "@/components/case/CaseListClient";
+import React from "react";
+import CaseListClient from "@/components/case/CaseListClient";
+import { fetchApplications } from "@/lib/api/applications";
 
-export default async function Page() {
- const rows = await fetchCases();
- return <CaseListClient rows={rows} />
+export default async function Page({
+ searchParams,
+}: {
+ searchParams: Record<string, string | string[] | undefined>;
+}) {
+ const params = await searchParams;
 
+ const pick = (k: string) => {
+  const v = params[k];
+  return Array.isArray(v) ? v[0] : v;
+ };
+
+ const q = pick("q") ?? "";
+ const stage = pick("stage") ?? "";
+ const ob = pick("ob") ?? "newest";
+ const page = Number(pick("page") ?? "1") || 1;
+ const size = Number(pick("size") ?? "10") || 10;
+
+ const result = await fetchApplications(
+  {
+   q,
+   stages: stage ? [stage] : undefined,
+   ob,
+   page,
+   size,
+  },
+  { cache: "no-store" }
+ );
+
+ const rows = result.ok ? result.rows : [];
+ const pagination = result.ok
+  ? result.pagination
+  : {
+   current_page: page,
+   total_pages: 1,
+   total_records: 0,
+   page_size: size,
+  };
+
+ return (
+  <CaseListClient
+   rows={rows}
+   pagination={pagination}
+   currentFilters={{
+    q,
+    stage,
+    ob,
+    page,
+    size
+   }}
+  />
+ );
 }

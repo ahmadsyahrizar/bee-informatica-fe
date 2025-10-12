@@ -4,46 +4,23 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { CaseRowType } from "@/types/case";
 import { ScoreBubble } from "./atoms/ScoreBubble";
 import { StageBadge } from "./atoms/StageBadge";
-import { ActionButton } from "./ActionButton";
-
-/* ------------------------ helpers ------------------------ */
-const formatRM = (n?: number) =>
-     typeof n === "number" ? `${n.toLocaleString("en-MY")} RM` : "—";
+import dayjs from "dayjs"
+import { Button } from "../ui/button";
+import formatRM from "@/lib/utils/formatRM";
 
 /* ---------------------- subcells ------------------------- */
-const PersonCell: React.FC<{
-     name: string;
-     caseId: string;
-     company: string;
-     avatars?: { src?: string; name: string }[];
-}> = ({ name, caseId, company }) => {
+const PersonCell: React.FC<CaseRowType> = ({ applicant_name, application_code, company_name }) => {
      return (
           <div className="flex items-center px-[12px] py-[16px]">
                <div className="min-w-0">
-                    <div className="truncate text-[14px] font-medium text-gray-900">{name}</div>
+                    <div className="truncate text-[14px] font-medium text-gray-900">{applicant_name}</div>
                     <div className="truncate text-[12px] text-gray-500">
-                         {caseId} · {company}
+                         {application_code} · {company_name}
                     </div>
                </div>
           </div>
      );
 };
-
-// const ScheduleCell: React.FC<{ value?: string }> = ({ value }) => {
-//      if (!value) {
-//           return (
-//                <Button
-//                     variant="ghost"
-//                     className="h-8 rounded-xl px-[12px] py-[26px] text-[14px] text-gray-700 underline"
-//                >
-//                     <Image src={iconCalendar} width={20} height={20} alt="add" /> Add
-//                </Button>
-//           );
-//      }
-//      return (
-//           <div className="text-[14px] font-medium text-gray-900 px-[12px]">{value}</div>
-//      );
-// };
 
 /* ---------------------- main row ------------------------- */
 export const CaseRow: React.FC<{ row: CaseRowType; onRedirect: () => void }> = ({
@@ -52,17 +29,10 @@ export const CaseRow: React.FC<{ row: CaseRowType; onRedirect: () => void }> = (
 }) => {
      return (
           <TableRow className="hover:bg-white">
-               {/* Person */}
                <TableCell className="cursor-pointer" onClick={onRedirect}>
-                    <PersonCell
-                         name={row.clientName}
-                         company={row.company}
-                         caseId={row.caseId}
-                         avatars={row.avatars}
-                    />
+                    <PersonCell {...row} />
                </TableCell>
 
-               {/* Score */}
                <TableCell>
                     <div className="w-6">
                          {typeof row.score === "number" && <ScoreBubble score={row.score} />}
@@ -75,43 +45,25 @@ export const CaseRow: React.FC<{ row: CaseRowType; onRedirect: () => void }> = (
                     )}
                </TableCell>
 
-               {/* Stage */}
                <TableCell>
                     {/* @ts-expect-error: rija */}
                     <StageBadge stage={row.stage} />
                </TableCell>
 
-               {/* Applied Loan */}
-               <TableCell className="text-right px-[12px] py-[16px]">
-                    <span className="text-gray-900">{formatRM(row.appliedLoanAmount)}</span>
+               <TableCell className="text-left px-[12px] py-[16px]">
+                    <span className="text-gray-900">{formatRM(row.applied_loan_amount)}</span>
                </TableCell>
 
-               {/* Approved Loan */}
-               <TableCell className="text-right px-[12px] py-[16px]">
-                    <span className="text-gray-900">{formatRM(row.approvedLoanAmount)}</span>
+               <TableCell className="text-left px-[12px] py-[16px]">
+                    <span className="text-gray-900">{formatRM(row.approved_loan_amount)}</span>
                </TableCell>
 
-               {/* Schedule */}
-               {/* <TableCell>
-                    <ScheduleCell value={row.schedule} />
-               </TableCell> */}
+               <TableCell>
+                    <span className="text-gray-900">{dayjs(row.registered_at).format("MMM DD, YYYY")}</span>
+               </TableCell>
 
-               {/* Action */}
-               <TableCell className="text-right">
-                    <ActionButton
-                         className="p-3"
-                         intent={
-                              row.stage === "Phone"
-                                   ? "start-call"
-                                   : row.stage === "Meet"
-                                        ? "join-meet"
-                                        : row.stage === "1st Review"
-                                             ? "check-score"
-                                             : row.stage === "Final Review"
-                                                  ? "check-application"
-                                                  : "view-decision"
-                         }
-                    />
+               <TableCell className="text-left pr-3">
+                    <Button className="bg-white border border-gray-300 py-2 px-[14px] shadow-gray-300 hover:bg-white">Detail</Button>
                </TableCell>
           </TableRow>
      );

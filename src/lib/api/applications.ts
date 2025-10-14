@@ -1,3 +1,4 @@
+import { API_DOMAIN } from "@/constants";
 import { fetcher } from "@/lib/utils/fetcher";
 import type { CaseRowType, CaseRowPagination } from "@/types/case";
 
@@ -32,7 +33,7 @@ export function buildApplicationsUrl(
  domain?: string
 ): string {
  const API_DOMAIN =
-  domain ?? process.env.API_DOMAIN ?? "https://afrvt5jbsq.ap-northeast-1.awsapprunner.com";
+  domain
  const p = new URLSearchParams();
 
  if (params.stages && Array.isArray(params.stages)) {
@@ -70,11 +71,11 @@ export async function fetchApplications(
 
  if (params.stages) queryParams.stages = params.stages;
 
- const url = buildApplicationsUrl(queryParams);
+ const url = buildApplicationsUrl(queryParams, API_DOMAIN);
  const result = await fetcher<ApplicationsAPIResponse>(url, {
   method: "GET",
   cache: opts?.cache ?? "no-store",
-  token: opts?.token ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJiZWUtY2xpZW50IiwiZW1haWwiOiJhaG1hZC5zeWFocml6YXJAZ21haWwuY29tIiwiZXhwIjoxNzYyODM2NDk5LCJpYXQiOjE3NjAyNDQ0OTksImlzcyI6ImJlZS1hcGktdmVyaWZ5LW90cCIsImp0aSI6ImVkYTg4NWQyLWUxMTMtNDA2NC1hNDhmLWEyYjhhZDk5OTI2YyIsIm5iZiI6MTc2MDI0NDQ5OSwicmVtZW1iZXIiOnRydWUsInN1YiI6IjMifQ.xiq-r3iUoli88JTBjnJ0pp2sdqz50vzdK24QyYNH5fw",
+  token: opts?.token,
   retries: opts?.retries ?? 0,
  });
 

@@ -1,6 +1,9 @@
 import React from "react";
 import CaseListClient from "@/components/case/CaseListClient";
 import { fetchApplications } from "@/lib/api/applications";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 
 export default async function Page({
  searchParams,
@@ -8,6 +11,10 @@ export default async function Page({
  searchParams: Record<string, string | string[] | undefined>;
 }) {
  const params = await searchParams;
+ // @ts-expect-error rija
+ const session = await getServerSession(authOptions)
+ // @ts-expect-error rija
+ const accessToken = (session as Record<string, string>)?.accessToken;
 
  const pick = (k: string) => {
   const v = params[k];
@@ -28,7 +35,7 @@ export default async function Page({
    page,
    size,
   },
-  { cache: "no-store" }
+  { cache: "no-store", token: accessToken }
  );
 
  const rows = result.ok ? result.rows : [];
@@ -40,6 +47,7 @@ export default async function Page({
    total_records: 0,
    page_size: size,
   };
+
 
  return (
   <CaseListClient

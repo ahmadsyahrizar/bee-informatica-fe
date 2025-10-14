@@ -6,12 +6,15 @@ import fundingBeeLogo from "./../../../../public/logo/fundingBeeLogo.svg";
 import { Button } from "@/components/ui/button";
 import Footer from "@/components/login/footer";
 import useVerification from "@/hooks/useVerification";
-import { useRouter } from "next/navigation";
-
-const email = 'rija.sr@gmail.com'
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react"
 
 export default function VerifyEmailPage() {
  const router = useRouter();
+ const search = useSearchParams();
+ const email = search.get("email") ?? "";
+ const tempToken = typeof window !== "undefined" ? sessionStorage.getItem("tempAuthToken") : null;
+
  const {
   setError,
   setIsVerifying,
@@ -104,8 +107,25 @@ export default function VerifyEmailPage() {
   }
  }
 
- const onVerified = () => {
-  console.log("on verified")
+ const onVerified = async (code: string) => {
+  if (!tempToken) {
+   router.push("/login");
+   return;
+  }
+
+  const res = await signIn("credentials", {
+   redirect: false,
+   email,
+   code,
+   tempToken
+  })
+
+  if (res?.ok) {
+   sessionStorage.removeItem("tempAuthToken");
+   router.push("/cases")
+  } else {
+   console.error("verify failed", res?.error);
+  }
  }
 
  const handleVerify = async (e?: React.FormEvent) => {
@@ -121,15 +141,9 @@ export default function VerifyEmailPage() {
   try {
    // TODO: replace with real API call
    await new Promise((r) => setTimeout(r, 700));
-
-   const correct = "482914";
-   if (code !== correct) {
-    setError("The code you entered is incorrect. Please try again.");
-    inputRefs.current[0]?.focus();
-   } else {
-    onVerified();
-   }
+   onVerified(code);
   } catch (err) {
+   console.error({ err })
    setError("Something went wrong. Please try again.");
   } finally {
    setIsVerifying(false);

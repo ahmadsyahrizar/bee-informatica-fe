@@ -20,6 +20,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import Footer from "@/components/login/footer";
+import useLogin from "@/hooks/useLogin";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const loginSchema = z.object({
  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
@@ -29,6 +32,8 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+ const router = useRouter()
+ const { mutate: loginNow, isPending } = useLogin()
  const form = useForm<LoginFormValues>({
   resolver: zodResolver(loginSchema),
   defaultValues: {
@@ -37,8 +42,17 @@ export default function LoginPage() {
   },
  });
 
- function onSubmit(values: LoginFormValues) {
-  console.log("Login submitted:", values);
+ async function onSubmit(values: LoginFormValues) {
+  loginNow({ email: values.email, remember: values.remember || false }, {
+   onSuccess: ({ ok, data }) => {
+    toast.success("Login success, redirecting to OTP")
+
+    if (ok && data?.data.token) {
+     sessionStorage.setItem("tempAuthToken", data.data.token);
+     router.push(`/verification?email=${encodeURIComponent(values.email)}`);
+    }
+   }
+  })
  }
 
  return (
@@ -97,7 +111,7 @@ export default function LoginPage() {
        )}
       />
 
-      <Button type="submit" className="w-full bg-orange-600 text-white hover:bg-orange-700">
+      <Button disabled={isPending} type="submit" className="w-full bg-orange-600 text-white hover:bg-orange-700">
        Sign in
       </Button>
      </form>

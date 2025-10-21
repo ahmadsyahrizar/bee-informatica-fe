@@ -6,7 +6,17 @@ import graphReview from "../../../public/icons/example-graph-review.svg"
 import graph from "../../../public/icons/example-graph.svg"
 import Image from "next/image";
 
-export default function TotalScore() {
+interface TotalScoreProps {
+  preScreening?: number;
+  cashflowScore?: number;
+  qualitativeScore?: number;
+}
+
+export default function TotalScore({
+  cashflowScore,
+  preScreening,
+  qualitativeScore
+}: TotalScoreProps) {
   const [openDrawer, setDrawer] = useState(false);
   const handleDrawer = () => setDrawer((prev) => !prev);
   const params = useSearchParams();
@@ -36,18 +46,18 @@ export default function TotalScore() {
             </div>
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
-              <label className="text-12 text-gray-400 font-medium">Pre-Screening</label>
-              <p className="text-brand-500 text-24 font-bold">9.5</p>
+              <label className="text-12 text-gray-400 font-medium mb-16">Pre-Screening</label>
+              <p className="text-brand-500 text-24 font-bold">{preScreening}</p>
             </div>
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium">Cashflow Analysis</label>
-              <p className="text-brand-500 text-24 font-bold">9.5</p>
+              <p className="text-brand-500 text-24 font-bold">{cashflowScore}</p>
             </div>
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium">Qualitative</label>
-              <p className="text-brand-500 text-24 font-bold">9.5</p>
+              <p className="text-brand-500 text-24 font-bold">{qualitativeScore}</p>
             </div>
           </div>
         </div>

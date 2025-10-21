@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-sreen mx-auto p-0`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-sreen max-w-[1220px] mx-auto p-0`}
       >
         <GlobalHeader />
         <div className="mt-[32px]">

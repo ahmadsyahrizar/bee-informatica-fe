@@ -3,13 +3,17 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// import { Button } from "@/components/ui/button";  
 
-export default function ContactInfoCard() {
- const [phone, setPhone] = React.useState("");
- const [email, setEmail] = React.useState("");
+interface ContactProps {
+ defaultPhone?: string | number;
+ defaultEmail?: string | number;
+}
 
- // Inline edit state
+export default function ContactInfoCard({ defaultPhone = "", defaultEmail = "" }: ContactProps) {
+ const [phone, setPhone] = React.useState<string | number>("");
+ const [email, setEmail] = React.useState<string | number>("");
+
+ // Inline edit state  
  const [isEditing, setIsEditing] = React.useState(false);
  const [draftPhone, setDraftPhone] = React.useState(phone);
  const [draftEmail, setDraftEmail] = React.useState(email);
@@ -20,18 +24,12 @@ export default function ContactInfoCard() {
   setIsEditing(true);
  };
 
- // will use later
- // const cancelEdit = (e?: React.MouseEvent) => {
- //  e?.stopPropagation();
- //  setIsEditing(false);
- // };
-
- // const saveEdit = (e?: React.MouseEvent) => {
- //  e?.stopPropagation();
- //  setPhone(draftPhone);
- //  setEmail(draftEmail);
- //  setIsEditing(false);
- // };
+ React.useEffect(() => {
+  if (defaultPhone && defaultEmail) {
+   setPhone(defaultPhone);
+   setEmail(defaultEmail);
+  }
+ }, [defaultPhone, defaultEmail]);
 
  return (
   <div
@@ -68,26 +66,6 @@ export default function ContactInfoCard() {
      readOnly={!isEditing}
     />
    </div>
-
-   {/* {isEditing && (
-    <div className="flex justify-end gap-2 ml-auto">
-     <div className="flex gap-2">
-      <Button
-       className="p-16"
-       variant="outline"
-       onClick={cancelEdit}
-      >
-       Cancel
-      </Button>
-      <Button
-       className="p-16 text-white"
-       onClick={saveEdit}
-      >
-       Save
-      </Button>
-     </div>
-    </div>
-   )} */}
   </div>
  );
 }

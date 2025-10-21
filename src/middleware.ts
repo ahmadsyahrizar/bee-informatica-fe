@@ -29,7 +29,6 @@ export async function middleware(req: NextRequest) {
 
  const token = await getToken({ req, secret: NEXTAUTH_SECRET });
  const hasFinalToken = !!(token as Record<string, string>)?.accessToken;
- console.log({ hasFinalToken })
 
  if (!hasFinalToken) {
   const loginUrl = new URL("/login", req.nextUrl.origin);

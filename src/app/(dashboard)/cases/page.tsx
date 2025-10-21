@@ -14,7 +14,7 @@ export default async function Page({
  // @ts-expect-error rija
  const session = await getServerSession(authOptions)
  // @ts-expect-error rija
- const accessToken = (session as Record<string, string>)?.accessToken;
+ const accessToken = session?.accessToken;
 
  const pick = (k: string) => {
   const v = params[k];

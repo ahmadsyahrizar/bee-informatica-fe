@@ -1,8 +1,10 @@
-// components/case-detail/CCRISTable.tsx
 "use client";
 
 import * as React from "react";
 import { DataTable, DTColumn, DTHeaderCell } from "@/components/common/DataTable";
+import type { Report } from "@/types/api/ccris.type";
+
+type MonthKey = "Jan" | "Feb" | "Mar" | "Apr" | "May" | "Jun" | "Jul" | "Aug" | "Sep" | "Oct" | "Nov" | "Dec";
 
 type CCRISRow = {
  no: number;
@@ -10,14 +12,62 @@ type CCRISRow = {
  facility: string;
  balance: number;
  limit: number;
- months: Record<"Jul" | "Jun" | "May" | "Apr" | "Mar" | "Feb" | "Jan" | "Dec", number>;
+ months: Record<MonthKey, number>;
 };
 
 const fmtRM = (n: number) =>
  n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function CCRISTable({ rows }: { rows: CCRISRow[] }) {
- const monthKeys: Array<keyof CCRISRow["months"]> = ["Jul", "Jun", "May", "Apr", "Mar", "Feb", "Jan", "Dec"];
+// map numeric month -> short name
+const monthNumToKey: Record<number, MonthKey> = {
+ 1: "Jan",
+ 2: "Feb",
+ 3: "Mar",
+ 4: "Apr",
+ 5: "May",
+ 6: "Jun",
+ 7: "Jul",
+ 8: "Aug",
+ 9: "Sep",
+ 10: "Oct",
+ 11: "Nov",
+ 12: "Dec",
+};
+
+const defaultMonths = (): Record<MonthKey, number> => ({
+ Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0,
+ Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0,
+});
+
+export function CCRISTable({ rows }: { rows?: Report[] | null }) {
+ const monthKeys: MonthKey[] = ["Jul", "Jun", "May", "Apr", "Mar", "Feb", "Jan", "Dec"];
+
+ const mappedRows: CCRISRow[] =
+  (rows ?? []).map((r, idx) => {
+   const months = defaultMonths();
+   if (Array.isArray(r.conduct_of_account)) {
+    r.conduct_of_account.forEach((c) => {
+     const key = monthNumToKey[c.month];
+     if (key) months[key] = typeof c.count === "number" ? c.count : 0;
+    });
+   }
+   let dateStr: string;
+   try {
+    const dt = new Date(r.date);
+    dateStr = isNaN(dt.getTime()) ? r.date : dt.toLocaleDateString();
+   } catch {
+    dateStr = r.date;
+   }
+
+   return {
+    no: idx + 1,
+    date: dateStr,
+    facility: r.facility,
+    balance: r.outstanding,
+    limit: r.limit,
+    months,
+   };
+  }) ?? [];
 
  const columns: DTColumn<CCRISRow>[] = [
   { key: "no", header: "No", width: "64px", align: "left", className: "pl-12", cell: r => r.no },
@@ -44,16 +94,15 @@ export function CCRISTable({ rows }: { rows: CCRISRow[] }) {
   { title: "Conduct of Account for last 12 months", colSpan: monthKeys.length, align: "left" },
  ];
 
- // Second header row: months only
  const hdrRow2: DTHeaderCell[] = monthKeys.map((m) => ({ title: m, align: "left" }));
 
  return (
   <DataTable
    columns={columns}
-   rows={rows}
+   rows={mappedRows}
    zebra
    dense
-   complexHeader={[hdrRow1, hdrRow2]}   // 👈 use the complex header
+   complexHeader={[hdrRow1, hdrRow2]}
    className="mt-12"
   />
  );

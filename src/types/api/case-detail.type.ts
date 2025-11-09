@@ -5,13 +5,12 @@ export interface CaseDetailRequest {
 }
 
 export type CaseDetailInitResponse = {
- data: {
-  id: number;
-  applicant_name: string;
-  application_code: string;
-  applied_loan_amount: number;
-  company_name: string;
-  score: number;
-  stage: string;
- }
-};  
+ id: number;
+ applicant_name: string;
+ application_code: string;
+ applied_loan_amount: number;
+ approved_loan_amount: number;
+ company_name: string;
+ score: number;
+ stage: string;
+};    

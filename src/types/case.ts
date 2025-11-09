@@ -1,10 +1,13 @@
 export type Stage =
  | "phone"
  | "video"
- | "1st Review"
- | "Final Review"
- | "Approved"
- | "Rejected";
+ | "1st_review"
+ | "cam_review"
+ | "offer"
+ | "completed"
+ | "rejected"
+ | "cancelled"
+ ;
 
 export interface CaseRowType {
  id: string | number;

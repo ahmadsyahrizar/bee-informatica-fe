@@ -6,16 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, ChevronRight } from "lucide-react";
 
-// ---------------- Types ----------------
 export type CLItem = { id: string | number; text: string };
 
 export type PhoneChecklistData = {
- title?: string; // e.g., "Phone Log"  
+ title?: string;
  checklist: CLItem[];
  defaultCheckedIds?: Array<CLItem["id"]>;
 };
 
-// --------------- Demo data ---------------
 const demoData: PhoneChecklistData = {
  title: "Phone Log",
  checklist: [
@@ -48,7 +46,6 @@ export default function PhoneChecklistDrawer({
  open: boolean;
  onOpenChange: (open?: string) => void;
  data?: PhoneChecklistData;
- /** gets called whenever selection changes */
  onChange?: (checkedIds: Array<CLItem["id"]>) => void;
 }) {
  const [checked, setChecked] = React.useState<Set<CLItem["id"]>>(new Set(data.defaultCheckedIds ?? []));

@@ -1,4 +1,3 @@
-// components/common/DataTable.tsx
 "use client";
 
 import * as React from "react";

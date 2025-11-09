@@ -11,18 +11,17 @@ import TotalScore from "./TotalScore";
 import { LoanAmountsRow } from "./Loan";
 import useCaseDetail from "@/hooks/useCaseDetail";
 import { useParams } from "next/navigation";
-import { CaseDetailInitResponse } from "@/types/api/case-detail.type";
 import { OverviewResponse } from "@/types/api/overview.type";
 import getDiffYear from "@/lib/utils/getDiffYear";
 import getAge from "@/lib/utils/getAge";
+import { useCaseDetailContext } from "@/context/InitCaseDetailContext";
 
 export function SummaryBlock() {
  const { id } = useParams()
- const { data: dataInit } = useCaseDetail<CaseDetailInitResponse>({ type: "initial", caseId: id as string });
- const { data: dataOverview } = useCaseDetail<OverviewResponse>({ type: "overview", caseId: id as string });
- const initDataDetail = dataInit?.data?.data;
- const overviewDataDetail = dataOverview?.data?.data;
+ const { data: initDataDetail } = useCaseDetailContext()
+ const { data: overviewDataDetail } = useCaseDetail<OverviewResponse>({ type: "overview", caseId: id as string });
  const businessOverview = overviewDataDetail?.business_overview;
+ const approvedLoanAmount = initDataDetail?.approved_loan_amount
  const overview = overviewDataDetail?.overview;
 
  const [openAddressModal, setOpenAddressModal] = useState(false);
@@ -30,7 +29,7 @@ export function SummaryBlock() {
 
  return (
   <>
-   <DetailHeader caseId={initDataDetail?.application_code || "CS-0000"} />
+   <DetailHeader />
    <section className="grid grid-cols-12 gap-16 mt-[24px] scroll-mt-28 lg:scroll-mt-32" id="overview">
     <div className="col-span-12 xl:col-span-12">
      <div className="flex items-start justify-between gap-16">
@@ -43,19 +42,25 @@ export function SummaryBlock() {
         {initDataDetail?.applicant_name} <span>({getAge(overview?.applicant_dob || "")})</span>
        </div>
        <div className="flex gap-8">
-        <div className="w-[100px] h-[100px] aspect-square">
-         <Image alt="selfie" width={100} height={100} className="rounded-md" src={overview?.applicant_photo_url || ""} />
-        </div>
-        <div className="w-[150px] h-[100px] aspect-auto">
-         <Image alt="ktp" width={150} height={100} className="rounded-md" src={overview?.applicant_identity_photo_url || ""} />
-        </div>
+        {overview?.applicant_photo_url && (
+         <div className="w-[100px] h-[100px] aspect-square">
+          <Image alt="selfie" width={100} height={100} className="rounded-md" src={overview?.applicant_photo_url || ""} />
+         </div>
+        )}
+
+        {
+         overview?.applicant_identity_photo_url && (
+          <div className="w-[150px] h-[100px] aspect-auto">
+           <Image alt="ktp" width={150} height={100} className="rounded-md" src={overview?.applicant_identity_photo_url || ""} />
+          </div>
+         )
+        }
        </div>
       </div>
       <TotalScore
        preScreening={overview?.pre_screen_score}
        cashflowScore={overview?.cashflow_score}
        qualitativeScore={overview?.qualitative_score}
-
       />
      </div>
 
@@ -65,8 +70,7 @@ export function SummaryBlock() {
 
      <LoanAmountsRow
       applied={initDataDetail?.applied_loan_amount}
-     // approved={approvedLoanAmount /* e.g. from API */}
-
+      approved={approvedLoanAmount /* e.g. from API */}
      />
 
      <div className="mt-[32px]">

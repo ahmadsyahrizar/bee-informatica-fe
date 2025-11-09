@@ -2,47 +2,71 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import KV from "./KV";
 import { AiGradientHeading } from "./GradientHeading";
+import type { FinancialSummary, MetaData } from "@/types/api/ai-highlight.type";
+import formatCurrency from "@/lib/utils/formatCurrencyRM";
 
-const dataInsights =
- [
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-success-50'
-  },
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-success-50'
-  },
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-error-50'
-  },
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-error-50'
-  },
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-gray-50'
-  },
-  {
-   title: "Cash Flow Health",
-   desc: "Total net cash flow = –18,179 RM, with 2 months strongly negative (Jan, Mar)",
-   bgColor: 'bg-gray-50'
+interface DataInsight {
+ title: string;
+ desc: string;
+ bgColor: string;
+}
+
+/**
+ * Converts MetaData API response to UI-friendly dataInsights array.
+ */
+export function mapMetaToInsights(meta?: MetaData): DataInsight[] {
+ const getBgColor = (identifier: string): string => {
+  switch (identifier) {
+   case "positive":
+    return "bg-success-50";
+   case "neutral":
+    return "bg-gray-50";
+   case "negative":
+    return "bg-error-50";
+   default:
+    return "bg-gray-50";
   }
- ]
+ };
 
-export function FinancialSummary() {
- const rows = [
-  { m: "December 2024", a: "118,902.03", b: "112,056.89", c: "6,845.14", d: "29,486.35", e: "19.03" },
-  { m: "January 2025", a: "127,000.00", b: "142,058.09", c: "-14,587.55", d: "14,908.80", e: "9.62" },
-  { m: "February 2025", a: "102,880.77", b: "102,447.98", c: "432.79", d: "15,341.59", e: "9.90" },
+ return [
+  {
+   title: "Cash Flow Health",
+   desc: meta?.cash_flow_health || "",
+   bgColor: getBgColor(meta?.cash_flow_health_identifier || ""),
+  },
+  {
+   title: "Ending Balance Consistency",
+   desc: meta?.ending_balance_consistency || "",
+   bgColor: getBgColor(meta?.ending_balance_consistency_identifier || ""),
+  },
+  {
+   title: "Cash In Consistency",
+   desc: meta?.cash_in_consistency || "",
+   bgColor: getBgColor(meta?.cash_in_consistency_identifier || ""),
+  },
+  {
+   title: "High Inflow Month",
+   desc: meta?.high_inflow_month || "",
+   bgColor: getBgColor(meta?.high_inflow_month_identifier || ""),
+  },
+  {
+   title: "Low Inflow Month",
+   desc: meta?.low_inflow_month || "",
+   bgColor: getBgColor(meta?.low_inflow_month_identifier || ""),
+  },
+  {
+   title: "Net Cashflow",
+   desc: meta?.net_cashflow || "",
+   bgColor: getBgColor(meta?.net_cashflow_identifier || ""),
+  },
  ];
+}
+
+
+export function FinancialSummary({ data, insight }: { insight?: MetaData, data: FinancialSummary[] }) {
+
+ const dataInsights = mapMetaToInsights(insight)
+
  return (
   <section className="mt-24 scroll-mt-28 lg:scroll-mt-32" id="ai-financial-summary">
    <AiGradientHeading id="ai-highlight">AI Financial Summary</AiGradientHeading>
@@ -59,14 +83,14 @@ export function FinancialSummary() {
       </TableRow>
      </TableHeader>
      <TableBody >
-      {rows.map((r, i) => (
+      {data?.map((row, i) => (
        <TableRow className="h-64" key={i}>
-        <TableCell className=" pl-12 whitespace-nowrap">{r.m}</TableCell>
-        <TableCell className="pl-12 text-14">{r.a} <span className="text-gray-500">RM</span></TableCell>
-        <TableCell className="pl-12 text-14">{r.b} <span className="text-gray-500">RM</span></TableCell>
-        <TableCell className="pl-12 text-14">{r.c} <span className="text-gray-500">RM</span></TableCell>
-        <TableCell className="pl-12 text-14">{r.d} <span className="text-gray-500">RM</span></TableCell>
-        <TableCell className="pl-12 text-14">{r.e}</TableCell>
+        <TableCell className=" pl-12 whitespace-nowrap">{row.month}</TableCell>
+        <TableCell className="pl-12 text-14">{formatCurrency(row.cash_in)} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{formatCurrency(row.cash_out)} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{formatCurrency(row.net_cash)} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{formatCurrency(row.balance)} <span className="text-gray-500">RM</span></TableCell>
+        <TableCell className="pl-12 text-14">{formatCurrency(row.buffer)}</TableCell>
        </TableRow>
       ))}
      </TableBody>

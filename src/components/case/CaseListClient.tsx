@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Table, TableBody } from "@/components/ui/table";
-import { CaseRowPagination, CaseRowType } from "@/types/case";
+import { CaseRowPagination, CaseRowType, Stage } from "@/types/case";
 import { CaseRow } from "./CaseRow";
 import { CaseTableHeader } from "./CaseTableHeader";
 import PageHeader from "./PageHeader";
@@ -10,19 +10,7 @@ import { PaginationBar } from "./PaginationBar";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 
-type StageFilter =
-  | "all-stages"
-  | "phone"
-  | "video"
-  | "review1"
-  | "final"
-  | "approved"
-  | "rejected";
-
-
 type SortBy = "updated-newest" | "updated-oldest"
-
-const ROWS_PER_PAGE = 10;
 
 const CaseListClient: React.FC<{
   rows: CaseRowType[];
@@ -65,7 +53,7 @@ const CaseListClient: React.FC<{
     router.push(`/cases?${p.toString()}`);
   };
 
-  const onStageChange = (v: StageFilter) => {
+  const onStageChange = (v: Stage & "all-stages") => {
     if (v === "all-stages") updateParam("stage", undefined);
     else updateParam("stage", v);
   };
@@ -90,8 +78,8 @@ const CaseListClient: React.FC<{
     updateParam("page", newPage);
   };
 
-  const handleRedirect = (param: string | number, s: string) => {
-    router.push(`/cases/${param}?stage=${encodeURIComponent(s)}`);
+  const handleRedirect = (param: string | number) => {
+    router.push(`/cases/${param}`);
   };
 
   return (
@@ -100,7 +88,8 @@ const CaseListClient: React.FC<{
         total={rows.length}
         search={inputSearch}
         onSearchChange={setInputSearch}
-        stage={(currentFilters.stage as StageFilter) ?? "all-stages"}
+        // @ts-expect-error rija
+        stage={(currentFilters.stage as "all-stages") ?? "all-stages"}
         onStageChange={onStageChange}
         sortBy={
           currentFilters.ob === "oldest"
@@ -121,7 +110,7 @@ const CaseListClient: React.FC<{
             <TableBody>
               {rows.length > 0 ? (
                 rows.map((r) => (
-                  <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id, r.stage)} />
+                  <CaseRow row={r} key={r.id} onRedirect={() => handleRedirect(r.id)} />
                 ))
               ) : (
                 <tr>
@@ -141,22 +130,6 @@ const CaseListClient: React.FC<{
             onPrev={onPrev}
             onNext={onNext}
           />
-          <div className="mt-4 flex gap-2 items-center">
-            <div>
-              <label className="text-sm text-gray-500 mr-2">Rows</label>
-              <select
-                defaultValue={String(currentFilters.size ?? pagination.page_size ?? ROWS_PER_PAGE)}
-                onChange={(e) => onSizeChange(Number(e.target.value))}
-                className="border rounded px-2 py-1"
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
       </div>
     </>

@@ -1,10 +1,12 @@
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
-import CreditScoreDrawer from "./drawerDetail";
-import { useSearchParams } from "next/navigation";
-import graphReview from "../../../public/icons/example-graph-review.svg"
-import graph from "../../../public/icons/example-graph.svg"
+import CreditScoreDrawer from "./drawerLog/drawerDetail";
+import { useParams, useSearchParams } from "next/navigation";
+import graphReview from "@/assets/icons/example-graph-review.svg"
+import graph from "@/assets/icons/example-graph.svg"
 import Image from "next/image";
+import { CaseDetailInitResponse } from "@/types/api/case-detail.type";
+import useCaseDetail from "@/hooks/useCaseDetail";
 
 interface TotalScoreProps {
   preScreening?: number;
@@ -19,10 +21,10 @@ export default function TotalScore({
 }: TotalScoreProps) {
   const [openDrawer, setDrawer] = useState(false);
   const handleDrawer = () => setDrawer((prev) => !prev);
-  const params = useSearchParams();
-  const currentStage = (params.get("stage") || "phone").toLowerCase();
-  const isReviewStage = currentStage === 'review1'
-  const isFinal = currentStage === 'final'
+  const { id } = useParams();
+  const { data: dataInitial } = useCaseDetail<CaseDetailInitResponse>({ type: 'initial', caseId: id as string })
+  const isReviewStage = dataInitial?.stage === '1st_review'
+  const isFinal = dataInitial?.stage === 'completed'
 
   return (
     <>
@@ -35,9 +37,7 @@ export default function TotalScore({
                 <p>Review Scoring (required)</p>
                 <ChevronRight className="size-16 cursor-pointer" />
               </div>
-            )
-              :
-              <ChevronRight onClick={handleDrawer} className="size-16 cursor-pointer" />
+            ) : <ChevronRight onClick={handleDrawer} className="size-16 cursor-pointer" />
             }
           </div>
           <div className="grid md:grid-cols-4 gap-3 mt-8">
@@ -47,17 +47,17 @@ export default function TotalScore({
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium mb-16">Pre-Screening</label>
-              <p className="text-brand-500 text-24 font-bold">{preScreening}</p>
+              <p className="text-brand-500 text-24 font-bold">{preScreening?.toFixed(1)}</p>
             </div>
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium">Cashflow Analysis</label>
-              <p className="text-brand-500 text-24 font-bold">{cashflowScore}</p>
+              <p className="text-brand-500 text-24 font-bold">{cashflowScore?.toFixed(1)}</p>
             </div>
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium">Qualitative</label>
-              <p className="text-brand-500 text-24 font-bold">{qualitativeScore}</p>
+              <p className="text-brand-500 text-24 font-bold">{qualitativeScore?.toFixed(1)}</p>
             </div>
           </div>
         </div>

@@ -17,15 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronDownIcon, Search } from "lucide-react";
+import { Stage } from "@/types/case";
 
-type StageFilter =
-  | "all-stages"
-  | "phone"
-  | "video"
-  | "review1"
-  | "final"
-  | "approved"
-  | "rejected";
 type SortBy = "updated-newest" | "updated-oldest";
 
 const PageHeader: React.FC<{
@@ -33,8 +26,8 @@ const PageHeader: React.FC<{
 
   search: string;
   onSearchChange: (v: string) => void;
-  stage: StageFilter;
-  onStageChange: (v: StageFilter) => void;
+  stage: Stage & "all-stages";
+  onStageChange: (v: Stage & "all-stages") => void;
   sortBy: SortBy;
   onSortByChange: (v: SortBy) => void;
 }> = ({
@@ -68,7 +61,7 @@ const PageHeader: React.FC<{
         </div>
 
         <div className="flex items-center justify-between mt-[28px]">
-          <Select value={stage} onValueChange={(v) => onStageChange(v as StageFilter)}>
+          <Select value={stage} onValueChange={(v) => onStageChange(v as Stage & "all-stages")}>
             <SelectTrigger className="w-[140px] rounded-[8px]">
               <SelectValue />
             </SelectTrigger>
@@ -76,10 +69,12 @@ const PageHeader: React.FC<{
               <SelectItem value="all-stages">All Stages</SelectItem>
               <SelectItem value="phone">Phone</SelectItem>
               <SelectItem value="video">Video</SelectItem>
-              <SelectItem value="review1">1st Review</SelectItem>
-              <SelectItem value="final">Final Review</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="1st_review">1st Review</SelectItem>
+              <SelectItem value="cam_review">Cam Review</SelectItem>
+              <SelectItem value="offer">Offer</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
 

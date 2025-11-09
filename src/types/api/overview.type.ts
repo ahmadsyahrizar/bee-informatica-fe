@@ -1,10 +1,8 @@
 export type OverviewResponse = {
- data: {
-  id: number;
-  application_id: number;
-  overview: ApplicantOverview;
-  business_overview: BusinessOverview;
- };
+ id: number;
+ application_id: number;
+ overview: ApplicantOverview;
+ business_overview: BusinessOverview;
 };
 
 export type ApplicantOverview = {
@@ -30,3 +28,8 @@ export type BusinessOverview = {
  year_of_establishment: number;
  owner_work_experience: string;
 };
+
+export interface OverviewPayloadRequest {
+ email?: string;
+ phone_number?: number | string;
+}

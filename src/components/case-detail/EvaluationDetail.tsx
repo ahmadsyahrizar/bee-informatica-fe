@@ -1,9 +1,13 @@
 "use client";
 
-import * as React from "react";
-import { Info, Pencil, CheckIcon } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import isStringValue from "@/lib/utils/isStringHelper";
+import React, { useEffect, useMemo, useState } from "react";
+import { Info } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
+import useCaseDetail from "@/hooks/useCaseDetail";
+import { BusinessAssessmentResponse } from "@/types/api/evaluation-detail.type";
+import { mapAssessmentToSections } from "@/lib/utils/mapEvaluationDetail";
+import EditableValueCell from "./EditableValueCell";
+import { CaseDetailInitResponse } from "@/types/api/case-detail.type";
 
 type Criterion = {
   label: string;
@@ -18,94 +22,24 @@ type Section = {
 };
 
 type Props = {
-  sections: Section[];
-  editable?: boolean;
   onChange?: (next: Section[]) => void;
 };
 
-function EditableValueCell({
-  value,
-  canEdit,
-  onSave,
-  className = "",
-}: {
-  value?: string | React.ReactNode;
-  canEdit: boolean;
-  onSave: (next: string) => void;
-  className?: string;
-}) {
-  const stringMode = isStringValue(value);
-  const display = (value ?? "-") as React.ReactNode;
+export default function EvaluationDetails({ onChange }: Props) {
+  const { id } = useParams()
+  const { data: dataInitial } = useCaseDetail<CaseDetailInitResponse>({ type: 'initial', caseId: id as string })
+  const isEditable = dataInitial?.stage === '1st_review'
+  const { data: dataEvaluation } = useCaseDetail<BusinessAssessmentResponse>({ type: "evaluation_detail", caseId: id as string });
+  const sections = useMemo(() => dataEvaluation ? mapAssessmentToSections(dataEvaluation) : [], [dataEvaluation]);
 
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState<string>(stringMode ? (value ?? "") : "");
-
-  React.useEffect(() => {
-    if (stringMode) setDraft(value ?? "");
-  }, [value, stringMode]);
-
-  const start = () => {
-    if (canEdit && stringMode) setEditing(true);
-  };
-  const cancel = () => {
-    setDraft(stringMode ? (value ?? "") : "");
-    setEditing(false);
-  };
-  const save = () => {
-    onSave(draft.trim());
-    setEditing(false);
-  };
-
-  if (!canEdit || !stringMode) {
-    // read-only (or non-string values)
-    return (
-      <div className={"relative " + className}>
-        <div>{display}</div>
-        {canEdit && !stringMode ? null : null}
-      </div>
-    );
-  }
-
-  return editing ? (
-    <div className="w-full relative">
-      <textarea
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={1}
-        className="w-full p-3 border-gray-300  text-[14px] text-gray-600 font-normal outline-none focus:border-b focus:border-brand-500 bg-gray-100"
-        placeholder=""
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save();
-          if (e.key === "Escape") cancel();
-        }}
-      />
-
-      <CheckIcon onClick={save} className="absolute right-8 top-16 size-16 text-[#079455]" />
-    </div>
-  ) : (
-    <div className={"relative flex items-start justify-between gap-3 " + className}>
-      <div className="whitespace-pre-wrap text-14 text-gray-600 font-normal">{display}</div>
-      <Pencil onClick={start} className="size-16" />
-    </div>
-  );
-}
-
-/* ------------- Main component ------------- */
-export default function EvaluationDetails({ sections, editable, onChange }: Props) {
-  const params = useSearchParams();
-  const stageParam = (params.get("stage") ?? "phone").toLowerCase();
-  const canEdit = editable ?? stageParam === "review1";
-
-  // local copy so we can edit inline
-  const [data, setData] = React.useState<Section[]>(
+  const [data, setData] = useState<Section[]>(
     sections.map((s) => ({
       ...s,
       criteria: s.criteria.map((c) => ({ ...c })),
     }))
   );
 
-  React.useEffect(() => {
-    // if parent updates `sections`, sync
+  useEffect(() => {
     setData(sections.map((s) => ({ ...s, criteria: s.criteria.map((c) => ({ ...c })) })));
   }, [sections]);
 
@@ -124,7 +58,6 @@ export default function EvaluationDetails({ sections, editable, onChange }: Prop
 
       {data.map((sec, secIdx) => (
         <div key={sec.id} className="space-y-8">
-          {/* Section Header */}
           <div className="flex items-center gap-3">
             <span className="flex h-24 w-24 items-center justify-center rounded-full text-brand-500 bg-brand-50 text-16 font-semibold">
               {sec.id}
@@ -132,7 +65,6 @@ export default function EvaluationDetails({ sections, editable, onChange }: Prop
             <h4 className="text-16 font-semibold text-gray-900">{sec.title}</h4>
           </div>
 
-          {/* Criteria rows */}
           <div>
             {sec.criteria.map((c, i) => (
               <div
@@ -152,9 +84,9 @@ export default function EvaluationDetails({ sections, editable, onChange }: Prop
                 <div className="flex-1">
                   <EditableValueCell
                     value={c.value}
-                    canEdit={canEdit}
+                    canEdit={isEditable}
                     onSave={(val) => updateValue(secIdx, i, val)}
-                    className="text-gray-900 font-bold text-18"
+                    className="text-gray-900 font-medium text-18"
                   />
                 </div>
               </div>

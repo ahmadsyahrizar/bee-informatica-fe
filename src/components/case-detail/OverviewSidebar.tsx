@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { usePathname, useRouter } from "next/navigation";
 import Cancellation from "./Cancellation";
@@ -21,10 +21,13 @@ const navItems = [
 ];
 
 export function OverviewSidebar() {
-  const { replace } = useRouter();
+  const { replace, back } = useRouter();
   const pathname = usePathname();
   const [activeId, setActiveId] = useState<string>(navItems[0].id);
 
+  const onBack = () => {
+    back();
+  }
   // Smooth scroll function
   const scrollToId = (id: string) => {
     const el = document.getElementById(id);
@@ -68,10 +71,10 @@ export function OverviewSidebar() {
 
   return (
     <>
-      <Button variant="link" className="h-8 rounded-xl px-3 gap-1 font-semibold text-14 mb-[40px]">
-        <ArrowLeft className="size-[20px]" />
+      <div onClick={onBack} className="flex justify-start items-center rounded-xl gap-1 font-semibold text-14 mb-[40px] cursor-pointer">
+        <ArrowLeft className="size-16" />
         <span className="text-gray-600">Back</span>
-      </Button>
+      </div>
 
       <nav className="sticky top-20 hidden lg:block">
         <Separator className="mb-6" />

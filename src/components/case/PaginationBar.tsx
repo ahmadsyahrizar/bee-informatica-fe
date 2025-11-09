@@ -9,9 +9,9 @@ export const PaginationBar: React.FC<{
   onNext: () => void;
 }> = ({ page, totalPages, onPrev, onNext }) => (
   <div className="flex items-center justify-between pt-12">
-    <Button variant="outline" className="h-9 rounded-[8px] border-gray-300 gap-2" onClick={onPrev}>
+    <div className="border flex justify-center items-center p-5 h-9 rounded-[8px] border-gray-300 gap-2" onClick={onPrev}>
       <ArrowLeft size={20} className="size-20 text-gray-400" /> Previous
-    </Button>
+    </div>
 
     <div className="flex items-center gap-6 font-medium text-14 text-gray-700">
       {Array.from({ length: totalPages }).map((_, i) => (
@@ -25,8 +25,8 @@ export const PaginationBar: React.FC<{
       ))}
     </div>
 
-    <Button variant="outline" className="h-9 rounded-[8px] border-gray-300 gap-2" onClick={onNext}>
+    <div className="border flex justify-center items-center p-5 h-9 rounded-[8px] border-gray-300 gap-2" onClick={onNext}>
       Next <ArrowRight className="size-20 text-gray-400" size={"20px"} />
-    </Button>
+    </div>
   </div>
 );   

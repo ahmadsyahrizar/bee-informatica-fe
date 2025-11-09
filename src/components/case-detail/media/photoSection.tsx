@@ -162,10 +162,9 @@ export function PhotosSection({
     <h3 className="text-[18px] font-semibold">{title}</h3>
     <div>
      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
-
-     {photos?.length ? <Button variant="outline" className="gap-2" onClick={triggerFilePick}>
+     {photos?.length ? <div className="gap-2 flex justify-center items-center border p-2 rounded-md" onClick={triggerFilePick}>
       <Upload className="size-16" /> Upload
-     </Button> : ''}
+     </div> : ''}
     </div>
    </div>
 
@@ -173,9 +172,9 @@ export function PhotosSection({
     <div className="rounded-2xl bg-slate-100 p-8">
      <div className="flex flex-col items-center justify-center gap-4 py-12">
       <div className="text-slate-500">No photos yet</div>
-      <Button variant="ghost" onClick={triggerFilePick} className="gap-2">
+      <div onClick={triggerFilePick} className="gap-2 flex justify-center items-center">
        <Upload className="size-16" /> Upload
-      </Button>
+      </div>
      </div>
     </div>
    ) : (

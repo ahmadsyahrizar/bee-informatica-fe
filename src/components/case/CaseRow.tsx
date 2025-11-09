@@ -28,8 +28,8 @@ export const CaseRow: React.FC<{ row: CaseRowType; onRedirect: () => void }> = (
      onRedirect,
 }) => {
      return (
-          <TableRow className="hover:bg-white">
-               <TableCell className="cursor-pointer" onClick={onRedirect}>
+          <TableRow className="hover:bg-white cursor-pointer" onClick={onRedirect}>
+               <TableCell className="cursor-pointer">
                     <PersonCell {...row} />
                </TableCell>
 

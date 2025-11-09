@@ -203,7 +203,6 @@ export function DetailHeader() {
         }
 
         if (stage === "1st_review") {
-            const [submitEnabled, setSubmitEnabled] = [false, () => { }];
             return (
                 <>
                     <Button onClick={() => setOpenReject(true)} className="bg-white p-2 shadow-none border border-gray-300">
@@ -267,6 +266,8 @@ export function DetailHeader() {
         return null;
     }
 
+
+    console.log({ openModalHistory })
     return (
         <div className="flex justify-between items-start">
             {stage === "completed" ?
@@ -350,15 +351,15 @@ export function DetailHeader() {
                         caseId={caseId}
                         stage={stage}
                     />
-
-                    <DecisionHistory
-                        open={openModalHistory}
-                        onClose={handleCloseHistory}
-                        entries={memoEntries}
-                        title="Decision History"
-                    />
                 </>
             }
+
+            <DecisionHistory
+                open={openModalHistory}
+                onClose={handleCloseHistory}
+                entries={memoEntries}
+                title="Decision History"
+            />
         </div>
     );
 }

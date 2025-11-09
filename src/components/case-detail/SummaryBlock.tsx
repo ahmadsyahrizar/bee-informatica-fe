@@ -3,7 +3,7 @@
 import { DetailHeader } from "./DetailHeader";
 import KV from "./KV";
 import { useState } from "react";
-import ContactInfoCard from "./Contact";
+import ContactInfoCard, { Stage } from "./Contact";
 import Image from "next/image";
 import { Badge } from "../ui/badge";
 import AddressVerificationModal from "./AddressVerifModal";
@@ -43,8 +43,8 @@ export function SummaryBlock() {
        </div>
        <div className="flex gap-8">
         {overview?.applicant_photo_url && (
-         <div className="w-[100px] h-[100px] aspect-square">
-          <Image alt="selfie" width={100} height={100} className="rounded-md" src={overview?.applicant_photo_url || ""} />
+         <div className="w-[100px] h-auto aspect-square">
+          <Image alt="selfie" width={100} height={100} className="object-cover rounded-md" src={overview?.applicant_photo_url || ""} />
          </div>
         )}
 
@@ -65,12 +65,12 @@ export function SummaryBlock() {
      </div>
 
      <div className="mt-32">
-      <ContactInfoCard defaultPhone={overview?.phone_number} defaultEmail={overview?.email} />
+      <ContactInfoCard stage={initDataDetail?.stage as Stage} defaultPhone={overview?.phone_number} defaultEmail={overview?.email} />
      </div>
 
      <LoanAmountsRow
       applied={initDataDetail?.applied_loan_amount}
-      approved={approvedLoanAmount /* e.g. from API */}
+      approved={approvedLoanAmount}
      />
 
      <div className="mt-[32px]">

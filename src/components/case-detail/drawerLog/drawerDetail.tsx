@@ -23,6 +23,7 @@ import { useCreditScore } from "@/hooks/useCreditScore";
 import PostCreditScore from "@/services/UpsertCreditScore";
 import { CreditScoreData, RatioRow, Section } from "@/types/credit-score";
 import type { PostCreditScoreRequest } from "@/types/api/upsert-cred-score.type";
+import { useCaseDetailContext } from "@/context/InitCaseDetailContext";
 
 /* ---------------- Demo (unchanged icons/content) ---------------- */
 const demoData: CreditScoreData = {
@@ -435,12 +436,10 @@ export default function CreditScoreDrawer({
   const params = useSearchParams();
   const { id } = useParams();
   const session = useSession();
+  const { data: dataInit } = useCaseDetailContext()
   // @ts-expect-error rija
   const accessToken = session.data?.accessToken ?? "";
-
-  // stage param expected to match your Stage type (e.g. "1st_review")
-  const stageParam = (params.get("stage") ?? "").toString();
-  const canEdit = stageParam.toLowerCase() === "1st_review".toLowerCase();
+  const canEdit = dataInit?.stage === '1st_review'
 
   /* refs for tabs */
   const overviewRef = React.useRef<HTMLDivElement | null>(null);
@@ -493,6 +492,8 @@ export default function CreditScoreDrawer({
   }
 
   const updateRateScore = (sectionKey: "preScreening" | "cashflow", rowIdx: number, next: number) => {
+    // Guard: only allow when canEdit (stage === "1st_review")
+    if (!canEdit) return;
     setModel(prev => {
       const nextModel = cloneModel(prev);
       const rows = nextModel[sectionKey].rows;
@@ -529,6 +530,8 @@ export default function CreditScoreDrawer({
   };
 
   const updateQualScore = (rowIdx: number, next: number) => {
+    // Guard: only allow when canEdit (stage === "1st_review")
+    if (!canEdit) return;
     setModel(prev => {
       const nextModel = cloneModel(prev);
       const rows = nextModel.qualitative.rows;
@@ -707,9 +710,11 @@ export default function CreditScoreDrawer({
       <SheetContent side="right" className="bg-white max-h-full p-0 w-[1080px] sm:w-[1080px] max-w-none sm:max-w-none">
         <SheetHeader className="border-b ml-24 p-16">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center mr-6">
-              <ChevronRight className="size-16" />
-              <ChevronRight className="size-16 ml-[-11px]" />
+            <div className="flex items-center mr-6 gap-3">
+              <div className="border p-3 rounded-md flex items-center">
+                <ChevronRight className="size-16" />
+                <ChevronRight className="size-16 ml-[-22px]" />
+              </div>
               <div>
                 <SheetTitle className="leading-tight">Credit Score</SheetTitle>
               </div>
@@ -736,13 +741,53 @@ export default function CreditScoreDrawer({
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 px-24">
           <div className="xl:col-span-12 space-y-6">
             <Tabs value={tab} onValueChange={onTabChange} className="w-full">
-              <TabsList className="w-full justify-start align-top overflow-x-auto">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="pre">Part A: Pre-Screening</TabsTrigger>
-                <TabsTrigger value="cash">Part B: Cashflow Analysis</TabsTrigger>
-                <TabsTrigger value="qual">Part C: Psychometric/Qualitative</TabsTrigger>
+              <TabsList className="w-full justify-start align-top overflow-x-auto border-b rounded-none gap-3 border-gray-200 p-16">
+                <TabsTrigger
+                  value="overview"
+                  className="relative px-4 py-3 text-[15px] font-semibold text-gray-500
+                 data-[state=active]:text-[#FF4700]
+                 after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-0 after:bg-[#FF4700]
+                 data-[state=active]:after:w-full
+                 transition-all duration-300 ease-in-out"
+                >
+                  Overview
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="pre"
+                  className="relative px-4 py-3 text-[15px] font-semibold text-gray-500
+                 data-[state=active]:text-[#FF4700]
+                 after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-0 after:bg-[#FF4700]
+                 data-[state=active]:after:w-full
+                 transition-all duration-300 ease-in-out"
+                >
+                  Part A: Pre-Screening
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="cash"
+                  className="relative px-4 py-3 text-[15px] font-semibold text-gray-500
+                 data-[state=active]:text-[#FF4700]
+                 after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-0 after:bg-[#FF4700]
+                 data-[state=active]:after:w-full
+                 transition-all duration-300 ease-in-out"
+                >
+                  Part B: Cashflow Analysis
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="qual"
+                  className="relative px-4 py-3 text-[15px] font-semibold text-gray-500
+                 data-[state=active]:text-[#FF4700]
+                 after:absolute after:left-0 after:bottom-0 after:h-[2px] after:w-0 after:bg-[#FF4700]
+                 data-[state=active]:after:w-full
+                 transition-all duration-300 ease-in-out"
+                >
+                  Part C: Psychometric/Qualitative
+                </TabsTrigger>
               </TabsList>
             </Tabs>
+
 
             <div className="space-y-6 pr-2 overflow-y-auto max-h-[calc(92vh-100px)]">
               <div ref={overviewRef} id="section-overview">

@@ -16,6 +16,8 @@ import { useSession } from "next-auth/react";
 import { useCaseDetailContext } from "@/context/InitCaseDetailContext";
 import { toast } from "sonner";
 import iconHistory from "@/assets/icons/icon-history.svg";
+import { StageDisplay } from "./StageDisplay";
+import { Stage } from "./Contact";
 
 type Props = {
   entries?: GetMemoResponse[] | undefined;
@@ -86,10 +88,8 @@ const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Prop
       <div className="border border-gray-200 p-12 rounded-lg">
         <div className="flex justify-between">
           <div className="flex justify-start items-center gap-2">
-            <Image src={iconPhoneLog} alt="phoneLog" width={28} height={28} />
-            <p>{dataInit?.stage}</p>
+            <StageDisplay stage={dataInit?.stage as Stage} />
 
-            {/* <-- show "Log" only for phone or video */}
             {(dataInit?.stage === "phone" || dataInit?.stage === "video") && (
               <div
                 onClick={() => handleLog("phone")}

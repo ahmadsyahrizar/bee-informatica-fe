@@ -163,24 +163,19 @@ export function ImageLightbox({
      <div className="text-xs opacity-80">{total ? `${localIndex + 1} / ${total}` : ""}</div>
      <div className="flex items-center gap-3">
       {item ? (
-       <Button
-        variant="ghost"
-        size="sm"
-        className="p-16 text-red-300 hover:text-red-400 hover:bg-white/10"
+       <div
+        className="flex p-16 text-red-300 hover:text-red-400 hover:bg-white/10"
         onClick={onDelete}
-        disabled={deleteMutation.isPending}
        >
         <Trash2 className="size-20 mr-1" /> {deleteMutation.isPending ? "Deleting..." : "Delete"}
-       </Button>
+       </div>
       ) : null}
-      <Button
-       variant="ghost"
-       size="icon"
+      <div
        className="text-white hover:bg-white/10"
        onClick={() => onOpenChange(false)}
       >
        <X className="size-20" />
-      </Button>
+      </div>
      </div>
     </div>
 

@@ -1,9 +1,6 @@
-"use client";
-
 import * as React from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Expand } from "lucide-react";
 import { OtherDoc } from "@/types/api/social-media.type";
 import dynamic from "next/dynamic";
@@ -44,15 +41,13 @@ export function OtherDocumentsSection({
         <div className="text-[16px] font-semibold">{description}</div>
 
         <div className="flex items-center gap-2">
-         <Button
-          variant="outline"
-          size="icon"
+         <div
           className="h-[20px] w-[20px]"
           onClick={() => openAt(id)}
           title="Preview"
          >
           <Expand className="w-[20px] h-[20px]" />
-         </Button>
+         </div>
         </div>
        </div>
 

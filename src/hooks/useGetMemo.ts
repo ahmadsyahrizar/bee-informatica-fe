@@ -22,13 +22,13 @@ export function useGetMemo(caseId?: string | number, stage?: PayloadMemoRequest[
   staleTime: 1000 * 60 * 2,
  });
 
- // normalize to entries array that your components expect
  const entries = useMemo(() => {
-  const d = query.data;
+  // @ts-expect-error rija
+  const d = query.data?.data;
   console.log({ d })
   if (!d) return undefined;
   if (Array.isArray(d)) return d as GetMemoResponse[];
-  if (d && typeof d === "object" && "data" in d) return d?.data as GetMemoResponse[];
+  if (d && typeof d === "object" && "data" in d) return d as GetMemoResponse[];
   return undefined;
  }, [query.data]);
 

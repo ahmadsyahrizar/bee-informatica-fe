@@ -25,7 +25,7 @@ export default async function Page({
  const stage = pick("stage") ?? "";
  const ob = pick("ob") ?? "newest";
  const page = Number(pick("page") ?? "1") || 1;
- const size = Number(pick("size") ?? "10") || 10;
+ const size = Number(pick("size") ?? "50") || 50;
 
  const result = await fetchApplications(
   {

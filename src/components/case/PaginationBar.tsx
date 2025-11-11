@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export const PaginationBar: React.FC<{
@@ -7,7 +6,8 @@ export const PaginationBar: React.FC<{
   totalPages: number;
   onPrev: () => void;
   onNext: () => void;
-}> = ({ page, totalPages, onPrev, onNext }) => (
+  onPagination: (param: number) => void
+}> = ({ page, totalPages, onPrev, onNext, onPagination }) => (
   <div className="flex items-center justify-between pt-12">
     <div className="border flex justify-center items-center p-5 h-9 rounded-[8px] border-gray-300 gap-2" onClick={onPrev}>
       <ArrowLeft size={20} className="size-20 text-gray-400" /> Previous
@@ -17,6 +17,7 @@ export const PaginationBar: React.FC<{
       {Array.from({ length: totalPages }).map((_, i) => (
         <button
           key={i}
+          onClick={() => onPagination(i + 1)}
           className={`h-[40px] w-[40px] rounded-lg grid place-items-center ${i + 1 === page ? "bg-gray-50 text-gray-700" : "text-gray-700 hover:bg-gray-50"
             }`}
         >

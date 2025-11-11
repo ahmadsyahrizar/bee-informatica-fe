@@ -65,10 +65,6 @@ const CaseListClient: React.FC<{
     updateParam("ob", ob);
   };
 
-  const onSizeChange = (newSize: number) => {
-    updateParam("size", newSize);
-  };
-
   const onPrev = () => {
     const newPage = Math.max(1, (currentFilters.page ?? 1) - 1);
     updateParam("page", newPage);
@@ -81,6 +77,10 @@ const CaseListClient: React.FC<{
   const handleRedirect = (param: string | number) => {
     router.push(`/cases/${param}`);
   };
+
+  const onPagination = (page: number) => {
+    updateParam("page", page);
+  }
 
   return (
     <>
@@ -127,6 +127,7 @@ const CaseListClient: React.FC<{
           <PaginationBar
             page={currentFilters.page ?? pagination.current_page}
             totalPages={pagination.total_pages}
+            onPagination={onPagination}
             onPrev={onPrev}
             onNext={onNext}
           />

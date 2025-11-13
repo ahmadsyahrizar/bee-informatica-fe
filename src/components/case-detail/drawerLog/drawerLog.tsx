@@ -7,12 +7,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, DTColumn } from "@/components/common/DataTable";
 import {
- ListChecks,
- MessageSquareText,
  PlayCircle,
  ChevronRight,
  X,
- Sparkles,
+ Sparkles,      
 } from "lucide-react";
 import { Avatar } from "../../ui/avatar";
 import { AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
@@ -209,7 +207,7 @@ export default function VideoCallLogDrawer({
     <SheetHeader className="border-b p-[16px]">
      <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-       <div className="border p-3 rounded-md flex items-center">
+       <div onClick={() => onOpenChange(false)} className="border p-3 rounded-md flex items-center cursor-pointer">
         <ChevronRight className="size-16" />
         <ChevronRight className="size-16 ml-[-22px]" />
        </div>

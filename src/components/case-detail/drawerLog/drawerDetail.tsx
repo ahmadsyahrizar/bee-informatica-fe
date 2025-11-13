@@ -704,14 +704,13 @@ export default function CreditScoreDrawer({
     mutation.mutate(payload as PostCreditScoreRequest);
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="bg-white max-h-full p-0 w-[1080px] sm:w-[1080px] max-w-none sm:max-w-none">
         <SheetHeader className="border-b ml-24 p-16">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center mr-6 gap-3">
-              <div className="border p-3 rounded-md flex items-center">
+              <div onClick={() => onOpenChange(false)} className="border p-3 rounded-md flex items-center cursor-pointer">
                 <ChevronRight className="size-16" />
                 <ChevronRight className="size-16 ml-[-22px]" />
               </div>

@@ -8,8 +8,8 @@ import UpdateEmailAndPhone from "@/services/UpdateEmailAndPhone";
 import { useSession } from "next-auth/react";
 import { OverviewPayloadRequest } from "@/types/api/overview.type";
 import { useParams } from "next/navigation";
-import iconEdit from "../../../public/icons/icon-edit.svg";
-import iconApproved from "../../../public/icons/icon-white-approved.svg";
+import iconEdit from "@/assets/icons/icon-edit.svg";
+import iconApproved from "@/assets/icons/icon-white-approved.svg";
 import Image from "next/image";
 import { toast } from "sonner";
 
@@ -93,11 +93,12 @@ export default function ContactInfoCard({
         </Label>
         <div className="flex items-center gap-8">
           <Input
-            disabled={!isEditing.phone}
-            className="bg-white"
-            id="contact-phone"
-            placeholder="+601234567890"
             value={phone}
+            id="contact-phone"
+            className="bg-white"
+            placeholder="+601234567890"
+            disabled={!isEditing.phone}
+            type="number"
             onChange={(e) => setPhone(Number(e.target.value))}
             readOnly={!isEditing.phone}
           />

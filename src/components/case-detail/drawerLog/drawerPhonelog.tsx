@@ -67,7 +67,7 @@ export default function PhoneChecklistDrawer({
    <SheetContent side="right" className="bg-white p-0 w-[860px] sm:w-[860px] max-w-none sm:max-w-none">
     <SheetHeader className="border-b">
      <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
+      <div onClick={() => onOpenChange()} className="flex items-center gap-3 cursor-pointer">
        <ChevronRight className="size-16" />
        <ChevronRight className="size-16 ml-[-22px]" />
        <SheetTitle>{data.title ?? "Checklist"}</SheetTitle>

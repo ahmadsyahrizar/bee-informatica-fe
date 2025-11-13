@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Expand } from "lucide-react";
 import { OtherDoc } from "@/types/api/social-media.type";
 import dynamic from "next/dynamic";
+import iconPDFdefault from "@/assets/icons/icon-pdf.png"
 
 const PdfModal = dynamic(() => import("@/components/common/ModalPdf"), { ssr: false });
 
@@ -53,16 +54,17 @@ export function OtherDocumentsSection({
 
        <div className="flex justify-center mt-12 pb-6 px-6">
         <button
-         className="relative h-[175px] w-[460px] rounded-xl overflow-hidden ring-1 ring-slate-200"
+         className="relative h-[175px] w-[460px] rounded-xl overflow-hidden ring-1 ring-slate-200 flex justify-center items-center"
          onClick={() => openAt(id)}
         >
          {url ? (
           <Image
-           src={url}
+           src={iconPDFdefault}
            alt={type || "document preview"}
-           fill
+           width={70}
+           height={70}
            className="object-cover m-0"
-           sizes="50vw"
+          // sizes="50vw"
           />
          ) : (
           <div className="flex items-center justify-center h-full w-full">No preview</div>

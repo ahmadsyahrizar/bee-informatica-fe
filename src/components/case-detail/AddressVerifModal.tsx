@@ -77,9 +77,15 @@ export default function AddressVerificationModal({
      </div>
     </DialogHeader>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-24">
-     {docList?.data?.map((data, idx) => <div key={idx}> {renderDocOrFallback(data)}</div>)}
-    </div>
+    {
+     !docList?.data?.length ?
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-24">
+       {docList?.data?.map((data, idx) => <div key={idx}> {renderDocOrFallback(data)}</div>)}
+      </div> : <div className="flex justify-center items-center">
+       Data is empty
+      </div>
+    }
    </DialogContent>
   </Dialog >
  );

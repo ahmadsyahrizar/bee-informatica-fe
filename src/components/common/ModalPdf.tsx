@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { ExternalLink, Download } from "lucide-react";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
 };
 
 export default function PdfModal({ isOpen, onClose, pdfUrl, pdfFilename = "document.pdf" }: Props) {
+ const [isLoading, setLoading] = useState(true)
  if (!isOpen) return null;
 
  const safeUrl = pdfUrl || "";
@@ -20,7 +21,11 @@ export default function PdfModal({ isOpen, onClose, pdfUrl, pdfFilename = "docum
     {/* header toolbar */}
     <div style={header}>
      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <button onClick={onClose} aria-label="Close" style={closeBtn}>
+      <button onClick={() => {
+       setLoading(false)
+       onClose()
+      }
+      } aria-label="Close" style={closeBtn}>
        ✕
       </button>
      </div>
@@ -54,6 +59,17 @@ export default function PdfModal({ isOpen, onClose, pdfUrl, pdfFilename = "docum
     </div>
 
     <div style={{ height: "80vh", width: "100%", marginTop: 8 }}>
+     {
+      isLoading && <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+       <div className="flex flex-col items-center gap-2">
+        <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24" fill="none" aria-hidden>
+         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+         <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+        </svg>
+        <span className="text-sm text-gray-700">Loading...</span>
+       </div>
+      </div>
+     }
      {safeUrl ? (
       // Use iframe so browser's native PDF viewer handles zoom/print/download.
       // Keep sandboxing disabled so the browser PDF UI works.
@@ -62,6 +78,8 @@ export default function PdfModal({ isOpen, onClose, pdfUrl, pdfFilename = "docum
        title="Document preview"
        style={{ width: "100%", height: "80vh", border: "none", borderRadius: 8 }}
        allowFullScreen
+       onLoad={() => setLoading(false)}
+       loading={"lazy"}
       />
      ) : (
       <div style={{ padding: 24 }}>No preview available for this document.</div>

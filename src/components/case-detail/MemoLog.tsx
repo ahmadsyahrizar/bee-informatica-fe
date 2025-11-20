@@ -1,6 +1,5 @@
 "use client";
 
-import iconPhoneLog from "@/assets/icons/icon-phone-log.svg";
 import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 import iconMemo from "@/assets/icons/icon-memo.svg";
@@ -36,6 +35,7 @@ const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Prop
   const [memo, setMemo] = useState("");
 
   const { data: dataInit } = useCaseDetailContext();
+  const currentStage = dataInit?.stage;
   const { mutate, isPending } = useMutation({
     mutationKey: ["upsertMemo", id],
     mutationFn: (body: PayloadMemoRequest) => UpsertMemo({ accessToken, caseId: "151" as string, body }),
@@ -111,7 +111,7 @@ const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Prop
         </div>
       </div>
 
-      <VideoCallLogDrawer onOpenChange={handleLog} open={openVideoDrawer} />
+      <VideoCallLogDrawer logType={currentStage as "phone" | "video"} onOpenChange={handleLog} open={openVideoDrawer} />
       <MemoModal isLoading={isPending} value={memo} open={openModal} onClose={handleOpenModal} onSave={onSave} />
     </>
   );

@@ -1,5 +1,3 @@
-// get-signed-url
-
 import { BASE_API_URL } from "@/constants";
 import { fetcher } from "@/lib/utils/fetcher";
 import { PropsGetSignedTranscriptionUrl } from "@/types/api/get-signed-url.type";

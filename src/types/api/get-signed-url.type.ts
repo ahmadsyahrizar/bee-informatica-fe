@@ -16,7 +16,7 @@ export interface FileAdditionalInfo {
 export interface GetSignedTranscriptionUrl {
  type: string; // e.g. "video", "image", etc.
  key: string;  // e.g. "4dd8c4f3-875e-47a2-b597-883fde8fd696/test.mp4"
- additional: FileAdditionalInfo;
+ additional?: FileAdditionalInfo;
 }
 
 export interface PropsGetSignedTranscriptionUrl {

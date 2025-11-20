@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import GetLogTemplate from "@/services/GetLogTemplate";
 import GetAppLog from "@/services/GetAppLog";
+import GetSignedTranscriptionUrl from "@/services/GetSignedUrlTranscription";
 import type {
   LogTemplateResponse,
   ChecklistItem as ApiChecklistItem,
@@ -11,18 +12,7 @@ import type {
 } from "@/types/api/log.type";
 import type { PropsGetAppLog } from "@/types/api/get-app-log.type";
 import { BASE_API_URL } from "@/constants";
-
-/** UI types */
-export type ChecklistItem = { id: number | string; questionId?: string; text: string; done?: boolean };
-export type KeyValueField = { key: string; label: string; value: string };
-export type VideoCallLogData = {
-  checklist: ChecklistItem[];
-  structured: KeyValueField[];
-  operatorNotes?: string;
-  videoUrl?: string;
-  transcript?: { role: "Staff" | "Client"; time?: string; text: string }[];
-  screenshots?: { url: string; caption?: string }[];
-};
+import { AppChecklistItem, AppLogShape, AppRecording, AppScreenshot, AppStructuredNoteArrayItem, AppTranscriptItem, ChecklistItem, KeyValueField, QueryPayload, VideoCallLogData } from "@/types/app-log";
 
 const empty: VideoCallLogData = {
   checklist: [],
@@ -33,62 +23,10 @@ const empty: VideoCallLogData = {
   screenshots: [],
 };
 
-/** Safe helpers */
 function safeString(v?: string | null) {
   if (v === undefined || v === null || v === "") return "-";
   return String(v);
 }
-
-/** App shapes (runtime-tolerant) */
-type AppChecklistItem = {
-  question_id?: string | number | null;
-  [k: string]: unknown;
-};
-
-type AppStructuredNoteArrayItem = {
-  key?: string | number | null;
-  value?: string | null;
-  answer?: string | null;
-  [k: string]: unknown;
-};
-
-type AppRecording = {
-  key?: string | null;
-  filename?: string | null;
-  mime?: string | null;
-  subtitle_key?: string | null;
-  [k: string]: unknown;
-};
-
-type AppScreenshot = {
-  key?: string | null;
-  url?: string | null;
-  caption?: string | null;
-  [k: string]: unknown;
-};
-
-type AppTranscriptItem = {
-  role?: "Staff" | "Client" | string;
-  time?: string;
-  text?: string;
-  [k: string]: unknown;
-};
-
-type AppLogShape = {
-  checklist?: AppChecklistItem[] | null;
-  structured_notes?: AppStructuredNoteArrayItem[] | Record<string, AppStructuredNoteArrayItem> | null;
-  operator_notes?: string | null;
-  recording?: AppRecording | AppRecording[] | null;
-  transcript?: AppTranscriptItem[] | null;
-  screenshots?: AppScreenshot[] | null;
-  [k: string]: unknown;
-};
-
-/** Query return typing */
-type QueryPayload = {
-  tplRes?: LogTemplateResponse | null;
-  logRes?: PropsGetAppLog | null;
-};
 
 export default function useMergedLog({
   accessToken,
@@ -112,15 +50,58 @@ export default function useMergedLog({
   const { data, isLoading, isError, error, refetch } = useQuery<QueryPayload, unknown>({
     queryKey,
     queryFn: async (): Promise<QueryPayload> => {
-      // call template + app log in parallel
       const [tplRes, logRes] = await Promise.all([
         GetLogTemplate<{ data: LogTemplateResponse }>({ accessToken, caseId, type }),
         GetAppLog<{ data: PropsGetAppLog }>({ accessToken, caseId, type }),
       ]);
 
-      return { tplRes: tplRes?.data?.data ?? null, logRes: logRes?.data?.data ?? null };
+      let signedUrl: string | null = null;
+
+      try {
+        const appLogShape = (logRes?.data?.data ?? null) as AppLogShape | null;
+        const rec = appLogShape?.recording;
+        const extractKey = (r?: AppRecording | null): string | null => {
+          if (!r) return null;
+          if (typeof (r as any).key === "string" && (r as any).key) return String((r as any).key);
+          return null;
+        };
+
+        let candidateKey: string | null = null;
+        if (Array.isArray(rec)) {
+          for (const rr of rec as AppRecording[]) {
+            const k = extractKey(rr);
+            if (k) {
+              candidateKey = k;
+              break;
+            }
+          }
+        } else {
+          candidateKey = extractKey(rec as AppRecording | null);
+        }
+
+        if (candidateKey) {
+          const body = {
+            type,
+            key: candidateKey,
+          };
+
+          try {
+            const signedRes = await GetSignedTranscriptionUrl<{ data: { data?: { url?: string } } }>({
+              accessToken,
+              caseId,
+              body,
+            });
+
+            signedUrl = (signedRes as any)?.data?.data ?? null;
+          } catch (err) {
+            signedUrl = null;
+          }
+        }
+      } catch (err) {
+      }
+
+      return { tplRes: tplRes?.data?.data ?? null, logRes: logRes?.data?.data ?? null, signedUrl };
     },
-    // only fetch when drawer is open, accessToken and caseId present
     enabled: Boolean(open && accessToken && caseId),
     staleTime: 1000 * 60 * 2,
   });
@@ -131,7 +112,6 @@ export default function useMergedLog({
     const tpl: LogTemplateResponse | null = data.tplRes ?? null;
     const appLog: AppLogShape | null = (data.logRes as unknown as AppLogShape) ?? null;
 
-    // build set of answered question ids from app log
     const appChecklistIds = new Set<string>();
     if (Array.isArray(appLog?.checklist)) {
       for (const it of appLog.checklist as AppChecklistItem[]) {
@@ -142,7 +122,6 @@ export default function useMergedLog({
       }
     }
 
-    // map template checklist into UI checklist items (preserve order)
     const templateChecklist = (tpl?.checklist ?? []).map((c: ApiChecklistItem, idx: number) => {
       const qid = c.question_id ?? (typeof c.order === "number" ? String(c.order) : String(idx));
       return {
@@ -153,7 +132,6 @@ export default function useMergedLog({
       } as ChecklistItem;
     });
 
-    // if app log checklist contains ids not present in template, append them (so UI shows them too)
     if (Array.isArray(appLog?.checklist)) {
       for (const it of appLog.checklist as AppChecklistItem[]) {
         const qid = String(it.question_id ?? "");
@@ -168,11 +146,9 @@ export default function useMergedLog({
       }
     }
 
-    // structured notes: prefer template order, but override answers from app log
     const structuredMap = new Map<string, KeyValueField>();
     const tplStructured: ApiStructuredNote[] = tpl?.structured_notes ?? [];
 
-    // prepopulate from template (respect label ordering)
     for (const s of tplStructured) {
       const key = String(s.key ?? s.value ?? "");
       structuredMap.set(key, {
@@ -182,7 +158,6 @@ export default function useMergedLog({
       });
     }
 
-    // override/append from app structured notes (array or object)
     const appStructured = appLog?.structured_notes;
     if (Array.isArray(appStructured)) {
       for (const s of appStructured as AppStructuredNoteArrayItem[]) {
@@ -210,7 +185,6 @@ export default function useMergedLog({
       }
     }
 
-    // produce ordered structured array: first template order, then remaining keys
     const structured: KeyValueField[] = [];
     for (const s of tplStructured) {
       const key = String(s.key ?? s.value ?? "");
@@ -218,20 +192,21 @@ export default function useMergedLog({
       if (kv) structured.push(kv);
       structuredMap.delete(key);
     }
-    // append remaining from app
     for (const kv of structuredMap.values()) structured.push(kv);
 
-    // recording -> derive URL (appLog.recording may be object or array)
     let videoUrl: string | undefined = undefined;
     const rec = appLog?.recording;
     if (rec) {
-      // if array, pick the first with key
-      if (Array.isArray(rec)) {
-        const r = rec.find((x) => (x as AppRecording).key) as AppRecording | undefined;
-        if (r?.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
+      if (data.signedUrl) {
+        videoUrl = data.signedUrl;
       } else {
-        const r = rec as AppRecording;
-        if (r.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
+        if (Array.isArray(rec)) {
+          const r = rec.find((x) => (x as AppRecording).key) as AppRecording | undefined;
+          if (r?.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
+        } else {
+          const r = rec as AppRecording;
+          if (r.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
+        }
       }
     }
 
@@ -265,8 +240,6 @@ export default function useMergedLog({
     isError,
     error,
     refetch: async () => {
-      // return wrapped refetch so consumer can await
-      // @ts-ignore
       return refetch();
     },
   };

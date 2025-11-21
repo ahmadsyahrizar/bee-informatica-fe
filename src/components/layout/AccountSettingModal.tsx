@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Image as ImageIcon, Trash2 } from "lucide-react";
 import CropModal from "./CropModal";
 import { useSession } from "next-auth/react";
+import extractProfileKey from "@/lib/utils/extractProfileKey";
 
 interface Props {
  open: boolean;
@@ -27,9 +28,7 @@ const AccountSettingsModal: React.FC<Props> = ({ open, onOpenChange }) => {
  const [lastName, setLastName] = useState(user?.last_name ?? "");
  const [email, setEmail] = useState(user?.email ?? "");
  const [tempKey, setKey] = useState("");
- const [tempUrl, setUrl] = useState("");
  const [localPreview, setLocalPreview] = useState<string | null>(null);
- const [rawFile, setRawFile] = useState<File | null>(null);
  const [cropOpen, setCropOpen] = useState(false);
 
  useEffect(() => {
@@ -55,7 +54,6 @@ const AccountSettingsModal: React.FC<Props> = ({ open, onOpenChange }) => {
  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
   const f = e.target.files?.[0];
   if (!f) return;
-  setRawFile(f);
   const url = URL.createObjectURL(f);
   setLocalPreview(url);
   setCropOpen(true);
@@ -65,9 +63,7 @@ const AccountSettingsModal: React.FC<Props> = ({ open, onOpenChange }) => {
   try {
    // Clear local preview / selected file / temp upload values
    setLocalPreview(null);
-   setRawFile(null);
    setKey("");
-   setUrl("");
 
    // Update user locally (no API call)
    // Keep other fields intact but set pic to empty string so UI shows fallback
@@ -97,9 +93,7 @@ const AccountSettingsModal: React.FC<Props> = ({ open, onOpenChange }) => {
    const url = (signed as any).data?.url?.url ?? (signed as any).url;
    const key = (signed as any).data?.url?.key ?? (signed as any).key;
    await uploadService.uploadToSignedUrl(url, blob);
-
    setKey(key)
-   setUrl(url)
 
   } catch (err: any) {
    toast.error(err?.message || "Upload failed");
@@ -164,7 +158,7 @@ const AccountSettingsModal: React.FC<Props> = ({ open, onOpenChange }) => {
       <div className="flex justify-end gap-2 mt-16">
        <Button className="p-16" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
        <Button className="p-16 text-white" onClick={() => {
-        updateMutation.mutate({ first_name: firstName, last_name: lastName, pic: tempKey } as any)
+        updateMutation.mutate({ first_name: firstName, last_name: lastName, pic: tempKey || extractProfileKey(user?.pic || "") } as any)
        }
 
        } disabled={updateMutation.isPending}>

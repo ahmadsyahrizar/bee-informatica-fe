@@ -16,7 +16,7 @@ type CCRISRow = {
 };
 
 const fmtRM = (n: number) =>
- n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ n?.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // map numeric month -> short name
 const monthNumToKey: Record<number, MonthKey> = {

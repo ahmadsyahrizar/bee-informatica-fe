@@ -2,7 +2,8 @@ import * as React from "react";
 import Image from "next/image";
 import { Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import fundingBeeLogo from "../../../public/logo/fundingBeeLogo.svg"
+import fundingBeeLogo from "@/assets/logo/fundingBeeLogo.svg"
+import AvatarMenu from "./AvatarMenu";
 
 export const GlobalHeader: React.FC = () => {
  return (
@@ -11,11 +12,11 @@ export const GlobalHeader: React.FC = () => {
     <Image src={fundingBeeLogo} alt="Fundingbee" width={120} height={32} />
    </div>
    <div className="flex items-center gap-12">
-    <Bell className="h-14 w-14 text-gray-500" />
-    <Avatar className="h-40 w-40">
+    {/* <Avatar className="h-40 w-40 cursor-pointer">
      <AvatarImage className="object-cover" width={40} height={40} src="https://placehold.co/600x400" alt="user" />
      <AvatarFallback>U</AvatarFallback>
-    </Avatar>
+    </Avatar> */}
+    <AvatarMenu />
    </div>
   </header>
  );

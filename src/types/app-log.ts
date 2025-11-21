@@ -11,6 +11,12 @@ export type VideoCallLogData = {
  videoUrl?: string;
  transcript?: { role: "Staff" | "Client"; time?: string; text: string }[];
  screenshots?: { url: string; caption?: string }[];
+ subtitleUrl?: string
+ subtitleSrt?: string;
+ isTemplateLoading?: boolean;
+ isAppLogLoading?: boolean;
+ isAppLogPolling?: boolean;
+ isFetchingSigned?: boolean;
 };
 
 /** App shapes (runtime-tolerant) */
@@ -62,5 +68,7 @@ export type AppLogShape = {
 export type QueryPayload = {
  tplRes?: LogTemplateResponse | null;
  logRes?: PropsGetAppLog | null;
+ signedSubtitleUrl?: string | null;
+ subtitleSrtText?: string | null;
  signedUrl?: string | null; // new: signed url if available
 };

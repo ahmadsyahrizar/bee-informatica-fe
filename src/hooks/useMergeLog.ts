@@ -1,18 +1,34 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import GetLogTemplate from "@/services/GetLogTemplate";
 import GetAppLog from "@/services/GetAppLog";
 import GetSignedTranscriptionUrl from "@/services/GetSignedUrlTranscription";
+
 import type {
   LogTemplateResponse,
   ChecklistItem as ApiChecklistItem,
-  StructuredNote as ApiStructuredNote,
 } from "@/types/api/log.type";
 import type { PropsGetAppLog } from "@/types/api/get-app-log.type";
+
+import type {
+  AppChecklistItem,
+  AppLogShape,
+  AppRecording,
+  AppScreenshot,
+  AppStructuredNoteArrayItem,
+  AppTranscriptItem,
+  ChecklistItem,
+  KeyValueField,
+  VideoCallLogData,
+} from "@/types/app-log";
+
 import { BASE_API_URL } from "@/constants";
-import { AppChecklistItem, AppLogShape, AppRecording, AppScreenshot, AppStructuredNoteArrayItem, AppTranscriptItem, ChecklistItem, KeyValueField, QueryPayload, VideoCallLogData } from "@/types/app-log";
+
+const SRT_PROXY = "/api/srt";
+
+const POLL_INTERVAL_MS = 5000;
 
 const empty: VideoCallLogData = {
   checklist: [],
@@ -23,11 +39,29 @@ const empty: VideoCallLogData = {
   screenshots: [],
 };
 
+// -------------------------------
+// Helpers
+// -------------------------------
 function safeString(v?: string | null) {
-  if (v === undefined || v === null || v === "") return "-";
-  return String(v);
+  return !v ? "-" : String(v);
 }
 
+const extractRecordings = (l?: AppLogShape | null): AppRecording[] => {
+  if (!l) return [];
+  if (Array.isArray(l.recording)) return l.recording as AppRecording[];
+  if (l.recording) return [l.recording as AppRecording];
+  return [];
+};
+
+const extractRecordingStatus = (r?: AppRecording | null): string | null => {
+  if (!r) return null;
+  const s = (r as any).status ?? (r as any).subtitle_status ?? null;
+  return s ? String(s).toLowerCase() : null;
+};
+
+// -------------------------------
+// Hook Main
+// -------------------------------
 export default function useMergedLog({
   accessToken,
   caseId,
@@ -38,209 +72,253 @@ export default function useMergedLog({
   caseId: string;
   type?: "video" | "phone";
   open?: boolean;
-}): {
-  data: VideoCallLogData;
-  isLoading: boolean;
-  isError: boolean;
-  error: unknown;
-  refetch: () => Promise<unknown>;
-} {
-  const queryKey = ["mergedLog", caseId, type];
+}) {
+  const enabled = Boolean(open && accessToken && caseId);
 
-  const { data, isLoading, isError, error, refetch } = useQuery<QueryPayload, unknown>({
-    queryKey,
-    queryFn: async (): Promise<QueryPayload> => {
-      const [tplRes, logRes] = await Promise.all([
-        GetLogTemplate<{ data: LogTemplateResponse }>({ accessToken, caseId, type }),
-        GetAppLog<{ data: PropsGetAppLog }>({ accessToken, caseId, type }),
-      ]);
-
-      let signedUrl: string | null = null;
-
-      try {
-        const appLogShape = (logRes?.data?.data ?? null) as AppLogShape | null;
-        const rec = appLogShape?.recording;
-        const extractKey = (r?: AppRecording | null): string | null => {
-          if (!r) return null;
-          if (typeof (r as any).key === "string" && (r as any).key) return String((r as any).key);
-          return null;
-        };
-
-        let candidateKey: string | null = null;
-        if (Array.isArray(rec)) {
-          for (const rr of rec as AppRecording[]) {
-            const k = extractKey(rr);
-            if (k) {
-              candidateKey = k;
-              break;
-            }
-          }
-        } else {
-          candidateKey = extractKey(rec as AppRecording | null);
-        }
-
-        if (candidateKey) {
-          const body = {
-            type,
-            key: candidateKey,
-          };
-
-          try {
-            const signedRes = await GetSignedTranscriptionUrl<{ data: { data?: { url?: string } } }>({
-              accessToken,
-              caseId,
-              body,
-            });
-
-            signedUrl = (signedRes as any)?.data?.data ?? null;
-          } catch (err) {
-            signedUrl = null;
-          }
-        }
-      } catch (err) {
-      }
-
-      return { tplRes: tplRes?.data?.data ?? null, logRes: logRes?.data?.data ?? null, signedUrl };
+  // -------------------------------------
+  // 1) TEMPLATE QUERY (NO POLLING)
+  // -------------------------------------
+  const tplQuery = useQuery({
+    queryKey: ["logTemplate", caseId, type],
+    enabled,
+    queryFn: async (): Promise<LogTemplateResponse | null> => {
+      const res = await GetLogTemplate<{ data: LogTemplateResponse }>({
+        accessToken,
+        caseId,
+        type,
+      });
+      return (res?.data?.data ?? null) as LogTemplateResponse | null;
     },
-    enabled: Boolean(open && accessToken && caseId),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 
-  const mapped = useMemo(() => {
-    if (!data) return empty;
-
-    const tpl: LogTemplateResponse | null = data.tplRes ?? null;
-    const appLog: AppLogShape | null = (data.logRes as unknown as AppLogShape) ?? null;
-
-    const appChecklistIds = new Set<string>();
-    if (Array.isArray(appLog?.checklist)) {
-      for (const it of appLog.checklist as AppChecklistItem[]) {
-        const qid = it?.question_id;
-        if (qid !== undefined && qid !== null && String(qid).trim() !== "") {
-          appChecklistIds.add(String(qid));
-        }
+  // -------------------------------------
+  // 2) APP LOG QUERY (WITH POLLING)
+  // -------------------------------------
+  const appLogQuery = useQuery({
+    queryKey: ["appLog", caseId, type],
+    enabled,
+    queryFn: async (): Promise<AppLogShape | null> => {
+      const res = await GetAppLog<{ data: PropsGetAppLog }>({
+        accessToken,
+        caseId,
+        type,
+      });
+      return (res?.data?.data ?? null) as AppLogShape | null;
+    },
+    refetchInterval: (query: any) => {
+      try {
+        const latest: AppLogShape | undefined | null = query?.state?.data ?? null;
+        const recs = extractRecordings(latest ?? null);
+        const statuses = recs.map((r) => extractRecordingStatus(r));
+        return statuses.some((s) => s === "in_progress") ? POLL_INTERVAL_MS : false;
+      } catch {
+        return false;
       }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 30,
+    retry: 1,
+  });
+
+  const isTemplateLoading = tplQuery.isLoading;
+  const isAppLogLoading = appLogQuery.isLoading;
+
+  const recordings = extractRecordings(appLogQuery.data ?? null);
+  const isAppLogPolling = recordings
+    .map((r) => extractRecordingStatus(r))
+    .some((s) => s === "in_progress");
+
+  // -------------------------------------
+  // 3) Fetch SIGNED URL + SRT after appLog updates
+  // -------------------------------------
+  const [signedPlaybackUrl, setSignedPlaybackUrl] = useState<string | null>(null);
+  const [signedSubtitleUrl, setSignedSubtitleUrl] = useState<string | null>(null);
+  const [subtitleSrtText, setSubtitleSrtText] = useState<string | null>(null);
+  const [isFetchingSigned, setIsFetchingSigned] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const appLog = appLogQuery.data ?? null;
+    if (!appLog) {
+      setSignedPlaybackUrl(null);
+      setSignedSubtitleUrl(null);
+      setSubtitleSrtText(null);
+      return;
     }
 
-    const templateChecklist = (tpl?.checklist ?? []).map((c: ApiChecklistItem, idx: number) => {
-      const qid = c.question_id ?? (typeof c.order === "number" ? String(c.order) : String(idx));
-      return {
-        id: String(qid),
-        questionId: String(qid),
-        text: safeString(c.question),
-        done: appChecklistIds.has(String(qid)),
-      } as ChecklistItem;
-    });
+    (async () => {
+      setIsFetchingSigned(true);
+      setSignedPlaybackUrl(null);
+      setSignedSubtitleUrl(null);
+      setSubtitleSrtText(null);
 
-    if (Array.isArray(appLog?.checklist)) {
-      for (const it of appLog.checklist as AppChecklistItem[]) {
-        const qid = String(it.question_id ?? "");
-        if (!templateChecklist.some((t) => String(t.questionId) === qid)) {
-          templateChecklist.push({
-            id: qid || `unknown-${Math.random().toString(36).slice(2, 8)}`,
-            questionId: qid,
-            text: qid || "-",
-            done: true,
+      try {
+        const recs = extractRecordings(appLog);
+
+        // -------- Playback Signed URL --------
+        const firstRecWithKey = recs.find((r) => r && (r as any).key);
+        const playbackKey = firstRecWithKey ? (firstRecWithKey as any).key : null;
+
+        if (playbackKey) {
+          const body = { type, key: playbackKey };
+          const sr = await GetSignedTranscriptionUrl<{ data: { data?: { url?: string } } }>({
+            accessToken,
+            caseId,
+            body,
           });
+          const cand = (sr as any)?.data?.data ?? null;
+          const url = typeof cand === "object" ? cand?.url : cand;
+          if (!cancelled) setSignedPlaybackUrl(url ?? null);
         }
+
+        // -------- Subtitle Signed URL --------
+        let subtitleKey: string | null = null;
+        let subtitleStatus: string | null = null;
+
+        for (const r of recs) {
+          if (!r) continue;
+          const subField = (r as any).subtitle_key ?? (r as any).subtitle ?? null;
+          if (!subtitleKey && subField)
+            subtitleKey = typeof subField === "string" ? subField : subField.key;
+          if (!subtitleStatus && (r as any).status)
+            subtitleStatus = String((r as any).status);
+          if (subtitleKey && subtitleStatus) break;
+        }
+
+        if (subtitleKey && subtitleStatus?.toLowerCase() === "completed") {
+          const body = { type, key: subtitleKey };
+          const sr = await GetSignedTranscriptionUrl<{ data: { data?: { url?: string } } }>({
+            accessToken,
+            caseId,
+            body,
+          });
+          const cand = (sr as any)?.data?.data ?? null;
+          const url = typeof cand === "object" ? cand?.url : cand;
+          if (!cancelled) setSignedSubtitleUrl(url ?? null);
+
+          if (url) {
+            const proxyUrl = `${SRT_PROXY}?url=${encodeURIComponent(url)}`;
+            const resp = await fetch(proxyUrl);
+            const text = resp.ok ? await resp.text() : "";
+            if (!cancelled) setSubtitleSrtText(text.trim() || null);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setSignedPlaybackUrl(null);
+          setSignedSubtitleUrl(null);
+          setSubtitleSrtText(null);
+        }
+      } finally {
+        if (!cancelled) setIsFetchingSigned(false);
       }
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appLogQuery.data, accessToken, caseId, type]);
+
+  // -------------------------------------
+  // 4) Final Mapping → VideoCallLogData
+  // -------------------------------------
+  const mapped = useMemo(() => {
+    const template = tplQuery.data ?? null;
+    const app = appLogQuery.data ?? null;
+
+    if (!template && !app) return empty;
+
+    const appIds = new Set(
+      (app?.checklist ?? []).map((i: AppChecklistItem) =>
+        String(i.question_id),
+      ),
+    );
+
+    const checklist = (template?.checklist ?? []).map(
+      (c: ApiChecklistItem, i: number) => {
+        const id = String(c.question_id ?? c.order ?? i);
+        return {
+          id,
+          questionId: id,
+          text: safeString(c.question),
+          done: appIds.has(id),
+        } as ChecklistItem;
+      },
+    );
 
     const structuredMap = new Map<string, KeyValueField>();
-    const tplStructured: ApiStructuredNote[] = tpl?.structured_notes ?? [];
-
-    for (const s of tplStructured) {
+    for (const s of template?.structured_notes ?? []) {
       const key = String(s.key ?? s.value ?? "");
       structuredMap.set(key, {
         key,
         label: safeString(s.value ?? s.key),
-        value: safeString(s.answer ?? "-"),
+        value: "-",
       });
     }
 
-    const appStructured = appLog?.structured_notes;
-    if (Array.isArray(appStructured)) {
-      for (const s of appStructured as AppStructuredNoteArrayItem[]) {
-        const key = String(s.key ?? "");
-        if (!key) continue;
-        structuredMap.set(key, {
-          key,
-          label: structuredMap.get(key)?.label ?? safeString(String(s.value ?? s.key)),
-          value: safeString((s.answer as string) ?? (s.value as string) ?? "-"),
-        });
-      }
-    } else if (appStructured && typeof appStructured === "object") {
-      for (const [key, value] of Object.entries(appStructured as Record<string, AppStructuredNoteArrayItem>)) {
-        structuredMap.set(key, {
-          key,
-          label: structuredMap.get(key)?.label ?? key,
-          value: safeString(
-            typeof value === "object" && value !== null
-              ? (value.answer as string) ?? (value.value as string) ?? "-"
-              : typeof value === "string"
-                ? value
-                : "-"
-          ),
-        });
-      }
+    for (const s of (app?.structured_notes ??
+      []) as AppStructuredNoteArrayItem[]) {
+      if (!s?.key) continue;
+      structuredMap.set(String(s.key), {
+        key: String(s.key),
+        label:
+          structuredMap.get(String(s.key))?.label ??
+          safeString(String(s.value ?? s.key)),
+        value: safeString((s.answer as any) ?? (s.value as any)),
+      });
     }
 
-    const structured: KeyValueField[] = [];
-    for (const s of tplStructured) {
-      const key = String(s.key ?? s.value ?? "");
-      const kv = structuredMap.get(key);
-      if (kv) structured.push(kv);
-      structuredMap.delete(key);
-    }
-    for (const kv of structuredMap.values()) structured.push(kv);
+    const structured = Array.from(structuredMap.values());
 
-    let videoUrl: string | undefined = undefined;
-    const rec = appLog?.recording;
-    if (rec) {
-      if (data.signedUrl) {
-        videoUrl = data.signedUrl;
-      } else {
-        if (Array.isArray(rec)) {
-          const r = rec.find((x) => (x as AppRecording).key) as AppRecording | undefined;
-          if (r?.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
-        } else {
-          const r = rec as AppRecording;
-          if (r.key) videoUrl = `${BASE_API_URL}/files/${String(r.key)}`;
-        }
-      }
-    }
+    const videoUrl =
+      signedPlaybackUrl ??
+      (app?.recording && (app.recording as any[])[0]?.key
+        ? `${BASE_API_URL}/files/${(app.recording as any)[0].key}`
+        : undefined);
 
-    const transcript: AppTranscriptItem[] = Array.isArray(appLog?.transcript) ? (appLog!.transcript as AppTranscriptItem[]) : [];
-
-    const screenshots =
-      Array.isArray(appLog?.screenshots)
-        ? (appLog!.screenshots as AppScreenshot[]).map((s) => ({
-          url: s.key ? `${BASE_API_URL}/files/${String(s.key)}` : String(s.url ?? ""),
-          caption: s.caption ?? undefined,
-        }))
-        : [];
+    const screenshots = (app?.screenshots ?? []).map((s: AppScreenshot) => ({
+      url: s.key ? `${BASE_API_URL}/files/${s.key}` : s.url,
+      caption: s.caption,
+    }));
 
     return {
-      checklist: templateChecklist,
+      checklist,
       structured,
-      operatorNotes: safeString(appLog?.operator_notes ?? ""),
+      operatorNotes: safeString(app?.operator_notes),
       videoUrl,
-      transcript: transcript.map((t) => ({
-        role: (t.role === "Staff" || t.role === "Client") ? (t.role as "Staff" | "Client") : "Staff",
-        time: t.time,
-        text: String(t.text ?? ""),
-      })),
+      transcript: (app?.transcript ?? []) as AppTranscriptItem[],
       screenshots,
-    } as VideoCallLogData;
-  }, [data]);
+      subtitleUrl: signedSubtitleUrl ?? undefined,
+      subtitleSrt: subtitleSrtText ?? undefined,
+
+      // ------ UI FLAGS ------
+      isTemplateLoading,
+      isAppLogLoading,
+      isAppLogPolling,
+      isFetchingSigned,
+    };
+  }, [
+    tplQuery.data,
+    appLogQuery.data,
+    signedPlaybackUrl,
+    signedSubtitleUrl,
+    subtitleSrtText,
+    isTemplateLoading,
+    isAppLogLoading,
+    isAppLogPolling,
+    isFetchingSigned,
+  ]);
 
   return {
     data: mapped,
-    isLoading,
-    isError,
-    error,
+    isLoading:
+      isTemplateLoading || isAppLogLoading || isFetchingSigned || isAppLogPolling,
+    isError: tplQuery.isError || appLogQuery.isError,
+    error: tplQuery.error ?? appLogQuery.error,
     refetch: async () => {
-      return refetch();
+      await Promise.all([tplQuery.refetch(), appLogQuery.refetch()]);
     },
   };
 }

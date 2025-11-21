@@ -23,6 +23,7 @@ export function useTranscriptionUpload({
  stage,
 }: UseTranscriptionUploadParams) {
  const [progress, setProgress] = useState(0);
+ const [serverKey, setServerKey] = useState("");
  const [currentFile, setCurrentFile] = useState<File | null>(null);
  const abortRef = useRef<() => void>(() => { });
 
@@ -44,6 +45,7 @@ export function useTranscriptionUpload({
 
    const { url = "", key = "" } = request.data?.data || {};
    if (!url) throw new Error("No presigned URL returned");
+   if (key) setServerKey(key);
 
    // 2) Upload with progress
    const { promise, abort } = uploadToS3WithProgress(url, file, setProgress);
@@ -89,6 +91,7 @@ export function useTranscriptionUpload({
   isUploading: mutation.isPending,
   progress,
   currentFile,
+  serverKey,
   cancel,
   error: mutation.error as Error | null,
   data: mutation.data,

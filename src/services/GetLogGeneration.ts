@@ -20,7 +20,7 @@ const CreateLogGeneration = async <TResponse = unknown>({
  caseId: string;
  body: CreateLogGenerationBody;
 }) => {
- const res = await fetcher<TResponse>(`${BASE_API_URL}/applications/${caseId}/transcription/log-generation`, {
+ const res = await fetcher<TResponse>(`${BASE_API_URL}/${caseId}/transcription/log-generation`, {
   method: "POST",
   token: accessToken,
   body,

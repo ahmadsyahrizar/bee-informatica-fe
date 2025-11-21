@@ -23,9 +23,11 @@ type Props = {
   memoLoading?: boolean;
   onOpenHistory?: () => void;
   onInvalidateMemo?: () => void;
+  isGenerating?: boolean;
+  generateLabel?: string | null;
 };
 
-const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Props) => {
+const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo, isGenerating = false, generateLabel = null }: Props) => {
   // @ts-expect-error rija
   const accessToken = useSession().data?.accessToken ?? "";
   const { id } = useParams();
@@ -90,7 +92,7 @@ const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Prop
           <div className="flex justify-start items-center gap-2">
             <StageDisplay stage={dataInit?.stage as Stage} />
 
-            {(dataInit?.stage === "phone" || dataInit?.stage === "video") && (
+            {(dataInit?.stage === "phone" || dataInit?.stage === "video") && !isGenerating && (
               <div
                 onClick={() => handleLog("phone")}
                 className="bg-gray-100 text-12 text-gray-600 font-medium p-1 rounded-sm flex items-center justify-center gap-2 cursor-pointer"
@@ -100,14 +102,37 @@ const MemoLog = ({ entries, memoLoading, onOpenHistory, onInvalidateMemo }: Prop
             )}
           </div>
 
-          <div className="border border-gray-300 p-8 rounded-md" onClick={onOpenHistory}>
+          {!isGenerating && <div className="border border-gray-300 p-8 rounded-md" onClick={onOpenHistory}>
             <Image src={iconHistory} alt="history" width={20} height={20} />
-          </div>
+          </div>}
+
+          {isGenerating && (
+            <div className="w-[200px]">
+              <div className="text-sm font-medium text-gray-700">{generateLabel ?? "Generating log..."}</div>
+              <div className="mt-2 h-2 bg-gray-100 rounded overflow-hidden">
+                {/* simple animated pseudo-progress */}
+                <div
+                  className="h-full rounded"
+                  style={{
+                    width: "48%",
+                    transition: "width 1s ease",
+                    background: "#FF4700",
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-3 relative">
           <Image src={iconMemo} alt="memo" width={18} height={18} className="absolute left-2 top-2" />
-          <Input value={memo} readOnly onClick={handleOpenModal} className="w-[563px] bg-gray-50 pl-[32px]" placeholder="add a memo" />
+          <Input
+            value={memo}
+            readOnly
+            onClick={handleOpenModal}
+            className="w-[563px] bg-gray-50 pl-[32px]"
+            placeholder="add a memo"
+          />
         </div>
       </div>
 

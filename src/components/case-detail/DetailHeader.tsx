@@ -29,6 +29,7 @@ import DisburseModal from "./DisburseModal";
 import CompletedStatus from "./CompletedStatus";
 import DecisionHistory from "./DecisionHistory";
 import { useGetMemo } from "@/hooks/useGetMemo";
+import CreateLogGeneration from "@/services/GetLogGeneration";
 
 export function DetailHeader() {
     // @ts-expect-error rija
@@ -62,7 +63,7 @@ export function DetailHeader() {
         enabled: !!caseId,
     });
 
-    const { uploadFile, isUploading, progress, currentFile, cancel } = useTranscriptionUpload({
+    const { uploadFile, isUploading, progress, currentFile, cancel, serverKey } = useTranscriptionUpload({
         accessToken,
         caseId,
         stage,
@@ -119,11 +120,56 @@ export function DetailHeader() {
         setShowError({ open: true, message: "Upload cancelled by user" });
     };
 
+    // ------------ NEW: create log generation mutation & state ------------
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generateLabel, setGenerateLabel] = useState<string | null>(null);
+
+    const createLogMutation = useMutation({
+        mutationFn: async (body: { type: string; key: string; additional?: any }) => {
+            return await CreateLogGeneration({
+                accessToken,
+                caseId: String(caseId),
+                body,
+            });
+        },
+        onMutate: () => {
+            // start loading bar in MemoLog area
+            setIsGenerating(true);
+        },
+        onSuccess: (res: any) => {
+            // expected response: { data: { job_name, status } }
+            setShowSuccess(false);
+            setPickedFile(null);
+            queryClient.invalidateQueries({ queryKey: ["getAppLog", caseId] });
+            toast.success("Log generation queued");
+            setIsGenerating(false);
+        },
+        onError: (err: any) => {
+            setIsGenerating(false);
+            toast.error(`Failed to generate log: ${err?.message || err}`);
+        },
+    });
+
     const handleGenerate = () => {
         setShowSuccess(false);
-        setPickedFile(null);
-        queryClient.invalidateQueries({ queryKey: ["getAppLog", caseId] });
+        const type = stage === "video" ? "video" : "phone";
+
+
+        if (!serverKey) {
+            toast.error("No file key available to generate log");
+            return;
+        }
+        const body = {
+            type,
+            key: serverKey,
+            // additional: {
+            //     enable: true,
+            // },
+        };
+
+        createLogMutation.mutate(body);
     };
+    // --------------------------------------------------------------------
 
     const handleDiscard = () => {
         setShowSuccess(false);
@@ -146,7 +192,6 @@ export function DetailHeader() {
         inputRef.current?.click();
     };
 
-    console.log({ openModalHistory })
     const handleOpenHistory = () => setOpenModalHistory(true);
     const handleCloseHistory = () => setOpenModalHistory(false);
     const closeError = () => setShowError({ open: false });
@@ -266,19 +311,20 @@ export function DetailHeader() {
         return null;
     }
 
-
-    console.log({ openModalHistory })
     return (
         <div className="flex justify-between items-start">
             {stage === "completed" ?
                 <CompletedStatus onOpenHistory={handleOpenHistory} />
                 :
                 <>
+                    {/* pass isGenerating to MemoLog so it can render the loading bar */}
                     <MemoLog
                         entries={memoEntries}
                         onOpenHistory={handleOpenHistory}
                         onInvalidateMemo={invalidateMemo}
                         memoLoading={memoLoading}
+                        isGenerating={isGenerating}
+                        generateLabel={stage === "video" ? "Generating Video Log.." : "Generating Phone Log.."}
                     />
 
                     {isRejected ? (
@@ -308,7 +354,7 @@ export function DetailHeader() {
                         open={showSuccess}
                         file={pickedFile}
                         stage={stage === "rejected" ? "phone" : (stage as "phone" | "video")}
-                        onGenerate={handleGenerate}
+                        onGenerate={handleGenerate}     // <-- now triggers API
                         onDiscard={handleDiscard}
                         onClose={handleDiscard}
                     />

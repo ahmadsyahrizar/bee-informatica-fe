@@ -20,6 +20,7 @@ import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GetAppLog from "@/services/GetAppLog";
 import { GetAppLogResponse } from "@/types/api/get-app-log.type";
+
 import NextPage from "@/services/PostNextPage";
 import { toast } from "sonner";
 import { Stage } from "@/types/case";
@@ -30,6 +31,8 @@ import CompletedStatus from "./CompletedStatus";
 import DecisionHistory from "./DecisionHistory";
 import { useGetMemo } from "@/hooks/useGetMemo";
 import CreateLogGeneration from "@/services/GetLogGeneration";
+import GetRevertHistory from "@/services/GetRevertHistory";
+import type { GetRevertHistoryResponse, HistoryWrapper, RevertHistory, SessionHistories } from "@/types/api/get-revert-history.type";
 
 export function DetailHeader() {
     // @ts-expect-error rija
@@ -39,7 +42,6 @@ export function DetailHeader() {
     const caseId = dataInitial?.id ?? "";
     const [openReject, setOpenReject] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-
     const [pickedFile, setPickedFile] = useState<File | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState<{ open: boolean; message?: string }>({ open: false });
@@ -49,8 +51,30 @@ export function DetailHeader() {
     const [openDisburseModal, setOpenDisburseModal] = useState(false);
     const [openModalHistory, setOpenModalHistory] = useState(false);
     const queryClient = useQueryClient();
-    const { entries: memoEntries, isLoading: memoLoading, isError: memoError, invalidate: invalidateMemo } =
-        useGetMemo(caseId, stage as any);
+    const { entries: memoEntries, isLoading: memoLoading, isError: memoError, invalidate: invalidateMemo, refetch } =
+        useGetMemo(caseId);
+
+    const { data: revertHistoryWrapper, isLoading: revertHistoryLoading } = useQuery({
+        queryKey: ["getRevertHistory", caseId],
+        queryFn: async () => {
+            const res = await GetRevertHistory({ accessToken, caseId: String(caseId) });
+            return res?.data;
+        },
+        enabled: !!caseId && stage === "1st_review",
+        select: (wrapper) => {
+            // @ts-expect-error rija
+            const sessions: SessionHistories[] = wrapper?.data ?? [];
+            const revertItems: RevertHistory[] = [];
+            for (const sess of sessions) {
+                for (const h of sess.histories ?? []) {
+                    if (h && (h as HistoryWrapper).type === "revert" && (h as any).revert_history) {
+                        revertItems.push((h as any).revert_history as RevertHistory);
+                    }
+                }
+            }
+            return { sessions, revertItems };
+        },
+    });
 
     const { data: dataAppLog } = useQuery({
         queryKey: ["getAppLog", caseId, stage],
@@ -60,7 +84,7 @@ export function DetailHeader() {
         select: (wrapper) => {
             return (wrapper.data && (wrapper.data as any).data) as GetAppLogResponse;
         },
-        enabled: !!caseId,
+        enabled: !!caseId && stage === "phone" || stage === "video",
     });
 
     const { uploadFile, isUploading, progress, currentFile, cancel, serverKey } = useTranscriptionUpload({
@@ -84,7 +108,7 @@ export function DetailHeader() {
             toast.error(`Failed to move to next stage: ${err?.message || err}`);
         },
     });
-
+    const revertHistories = revertHistoryWrapper ?? undefined;
     const isRejected = stage === "rejected";
     const accept =
         stage === "video" ? "video/*,video/mp4,video/quicktime" : "audio/*,audio/mpeg,audio/wav,audio/mp3";
@@ -325,8 +349,8 @@ export function DetailHeader() {
                         memoLoading={memoLoading}
                         isGenerating={isGenerating}
                         generateLabel={stage === "video" ? "Generating Video Log.." : "Generating Phone Log.."}
+                        revertItems={revertHistories?.revertItems}
                     />
-
                     {isRejected ? (
                         <div className="relative text-[#F04438] bg-error-50 rounded-md px-3 py-2 pr-[48px] border font-semibold border-error-200 flex justify-between items-center">
                             Application Rejected
@@ -389,7 +413,6 @@ export function DetailHeader() {
                         stage={stage}
                     />
 
-                    {/* DISBURSE modal (offer -> disburse) */}
                     <DisburseModal
                         open={openDisburseModal}
                         onClose={() => setOpenDisburseModal(false)}
@@ -405,6 +428,7 @@ export function DetailHeader() {
                 onClose={handleCloseHistory}
                 entries={memoEntries}
                 title="Decision History"
+                revertItems={revertHistories?.revertItems}
             />
         </div>
     );

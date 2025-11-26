@@ -10,6 +10,7 @@ const AiContainer = () => {
   const dataStrength = data?.strengths || [];
   const dataRisks = data?.risks || [];
   const dataFinancialSummary = data?.financial_summaries || []
+  const financialMeta = data?.financial_meta || {}
   const dataInsight = data?.meta
 
   return (

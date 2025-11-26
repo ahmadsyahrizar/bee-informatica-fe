@@ -1,4 +1,3 @@
-// src/types/api/get-revert-history.type.ts
 export interface RevertUser {
  first_name?: string;
  last_name?: string;
@@ -12,7 +11,7 @@ export interface RevertHistory {
  id: number;
  application_id: number;
  session: string;
- type: string; // "revert" | "submit" | ...
+ type: string;
  reason?: string | null;
  created_at?: string;
  updated_at?: string;

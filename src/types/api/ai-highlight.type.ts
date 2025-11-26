@@ -28,5 +28,18 @@ export interface FinancialAnalysisResponse {
  strengths: string[];
  risks: string[];
  financial_summaries: FinancialSummary[];
+ financial_meta: {
+  installment_period: number,
+  total_cash_in_a: number,
+  total_cash_out_b: number,
+  average_net_c: number,
+  total_balance_d: number,
+  average_cash_in_a: number,
+  average_cash_out_b: number,
+  net_c: number,
+  balance_d: number,
+  buffer: number,
+  limitation_of_loan_size: number
+ }
  meta: MetaData;
 }

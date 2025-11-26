@@ -12,12 +12,14 @@ interface TotalScoreProps {
   preScreening?: number;
   cashflowScore?: number;
   qualitativeScore?: number;
+  totalScore?: number;
 }
 
 export default function TotalScore({
   cashflowScore,
   preScreening,
-  qualitativeScore
+  qualitativeScore,
+  totalScore
 }: TotalScoreProps) {
   const [openDrawer, setDrawer] = useState(false);
   const handleDrawer = () => setDrawer((prev) => !prev);
@@ -41,9 +43,61 @@ export default function TotalScore({
             }
           </div>
           <div className="grid md:grid-cols-4 gap-3 mt-8">
-            <div>
-              {isReviewStage || isFinal ? <Image src={graphReview} alt="review-stage" width={136} height={100} /> : <Image src={graph} alt="review-stage" width={136} height={100} />}
+            <div className="flex items-center justify-center">
+              {(isReviewStage || isFinal) ? (
+                <div className="relative w-[160px] h-[100px]">
+                  {/* Background half-arc */}
+                  <svg
+                    width="135"
+                    height="90"
+                    viewBox="0 0 160 80"
+                    className="absolute top-0 left-0"
+                  >
+                    <path
+                      d="M10 80 A70 70 0 0 1 150 80"
+                      stroke="#E5E1DF"
+                      strokeWidth="16"
+                      fill="none"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+
+                  <svg
+                    width="135"
+                    height="90"
+                    viewBox="0 0 160 80"
+                    className="absolute top-0 left-0"
+                  >
+                    <path
+                      d="M10 80 A70 70 0 0 1 150 80"
+                      stroke={totalScore && totalScore < 60 ? "#F04438" : "#17B26A"}
+                      strokeWidth="16"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeDasharray="220"
+                      strokeDashoffset={
+                        totalScore
+                          ? 220 - (220 * totalScore) / 100 // 0–100 scale
+                          : 220
+                      }
+                    />
+                  </svg>
+
+                  {/* Score number */}
+                  <div className="absolute left-1 right-0 top-[30px] flex justify-center">
+                    <p
+                      className={`text-[48px] font-bold ${totalScore && totalScore < 60 ? "text-[#F04438]" : "text-[#17B26A]"
+                        }`}
+                    >
+                      {totalScore?.toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <Image src={graph} alt="review-stage" width={136} height={100} />
+              )}
             </div>
+
 
             <div className="border border-[#FFC2AA] rounded-md bg-white p-12">
               <label className="text-12 text-gray-400 font-medium mb-16">Pre-Screening</label>

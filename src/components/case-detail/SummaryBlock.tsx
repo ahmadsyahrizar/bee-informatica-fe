@@ -58,6 +58,7 @@ export function SummaryBlock() {
        </div>
       </div>
       <TotalScore
+       totalScore={overview?.total_score}
        preScreening={overview?.pre_screen_score}
        cashflowScore={overview?.cashflow_score}
        qualitativeScore={overview?.qualitative_score}

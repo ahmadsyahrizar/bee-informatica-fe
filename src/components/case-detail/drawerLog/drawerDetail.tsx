@@ -30,6 +30,7 @@ const demoData: CreditScoreData = {
   overview: {
     title: "Overview",
     icon: <FileBadge2 className="size-16" />,
+    // UPDATED: header columns for overview as requested
     columns: ["Category", "Ratio Allocation", "Ratio Score"],
     rows: [
       { label: "Part A: Pre Screening", ratio: "10%", score: "-" },
@@ -41,16 +42,16 @@ const demoData: CreditScoreData = {
   preScreening: {
     title: "Part A: Pre Screening",
     icon: <ShieldCheck className="size-16" />,
-    columns: ["Compliance", "Ratio Allocation", "Full Rate", "Rate Score", "Score"],
+    columns: ["Compliance", "Ratio Allocation", "Rate Score", "Score"],
     rows: [],
-    footer: { label: "Total", fullRate: 0, rateScore: "-", score: "-" },
+    footer: { label: "Total", rateScore: "-", score: "-" },
   },
   cashflow: {
     title: "Part B: Cashflow Analysis",
     icon: <Banknote className="size-16" />,
-    columns: ["Compliance", "Ratio Allocation", "Full Rate", "Rate Score", "Score / 100"],
+    columns: ["Compliance", "Ratio Allocation", "Rate Score", "Score / 100"],
     rows: [],
-    footer: { label: "Total", fullRate: 0, rateScore: "-", score: "-" },
+    footer: { label: "Total", rateScore: "-", score: "-" },
   },
   qualitative: {
     title: "Part C: Qualitative",
@@ -72,13 +73,15 @@ const toPercent = (v: number | string | undefined) => {
   return s.endsWith("%") ? parseFloat(s.slice(0, -1)) : parseFloat(s);
 };
 
+/* ------------- NEW: calcRowScore scaled to 0-100 -------------- */
+/* Score = ratio% * (rateScore / MAX_RATE)  -> produces 0..100 contribution */
+const MAX_RATE = 5;
+
 const calcRowScore = (row: RatioRow) => {
   const p = toPercent(row.ratio); // e.g. 24
-  const full = toNumber(row.fullRate); // e.g. 5
-  const rate = toNumber(Number(row.rateScore)); // e.g. 4
-  if (Number.isFinite(p) && Number.isFinite(full) && Number.isFinite(rate) && full > 0) {
-    // Score out of 100 = ratio% * (rate/full)
-    return +((p * (rate / full))).toFixed(2);
+  const rate = toNumber(row.rateScore); // e.g. 4
+  if (Number.isFinite(p) && Number.isFinite(rate) && MAX_RATE > 0) {
+    return +(p * (rate / MAX_RATE)).toFixed(2);
   }
   return "-";
 };
@@ -97,50 +100,20 @@ const PRE_SCREENING_LABELS: Record<string, string> = {
 };
 
 function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreData {
-  // templateData may be wrapper { data: ... } depending on your API; normalize
+  // Normalize inputs
   const tpl = templateData?.data ?? templateData ?? {};
   const sc = scoreData?.data ?? scoreData ?? {};
 
-  const overviewRows: RatioRow[] = [
-    { label: "Part A: Pre Screening", ratio: `${tpl?.pre_screening?.ratio_allocation ?? 0}%`, score: "-" },
-    { label: "Part B: Cashflow Analysis", ratio: `${tpl?.cashflow_analysis?.ratio_allocation ?? 0}%`, score: "-" },
-    { label: "Part C: Qualitative", ratio: `${tpl?.qualitative_score?.ratio_allocation ?? 0}%`, score: "-" },
-  ];
-
-  // CASHFLOW: group by header_key
-  const raw = (tpl?.cashflow_analysis?.credit_score_data ?? []).slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
-  const groups = new Map<string, { header_value?: string; items: any[] }>();
-  raw.forEach((it: any) => {
-    const hk = it.header_key ?? "default";
-    if (!groups.has(hk)) groups.set(hk, { header_value: it.header_value, items: [] });
-    groups.get(hk)!.items.push(it);
-  });
-
-  const cashflowRows: RatioRow[] = [];
-  groups.forEach((g) => {
-    // header row
-    cashflowRows.push({ isGroup: true, label: g.header_value ?? "", key: `grp-${g.header_value}` });
-    g.items.forEach((it) => {
-      cashflowRows.push({
-        key: it.key,
-        label: it.value,
-        ratio: typeof it.ratio === "number" ? `${it.ratio}%` : it.ratio,
-        fullRate: it.full_rate ?? 5,
-        rateScore: "-",
-        score: "-",
-      });
-    });
-  });
-
-  // PRE: use template order; fallback to PRE_SCREENING_LABELS if template absent
+  /* ---------- PRE (unchanged) ---------- */
   const preRaw = tpl?.pre_screening?.credit_score_data ?? [];
-  const preKeys = preRaw.length ? preRaw : Object.keys(PRE_SCREENING_LABELS).map((k, i) => ({
-    key: k,
-    value: PRE_SCREENING_LABELS[k],
-    ratio: (i === 4 ? 4 : 24), // fallback
-    full_rate: 5,
-    order: i + 1,
-  }));
+  const preKeys = preRaw.length
+    ? preRaw
+    : Object.keys(PRE_SCREENING_LABELS).map((k, i) => ({
+      key: k,
+      value: PRE_SCREENING_LABELS[k],
+      ratio: i === 4 ? 4 : 24,
+      order: i + 1,
+    }));
 
   const preRows: RatioRow[] = preKeys
     .slice()
@@ -149,37 +122,82 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
       key: it.key,
       label: it.value,
       ratio: typeof it.ratio === "number" ? `${it.ratio}%` : it.ratio,
-      fullRate: it.full_rate ?? 5,
       rateScore: "-",
       score: "-",
     }));
 
-  // QUAL - read possible ai_score from template items, and final_score from scoreData
+  /* ---------- CASHFLOW: group by header_key, but keep original order ---------- */
+  const raw = (tpl?.cashflow_analysis?.credit_score_data ?? [])
+    .slice()
+    .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+
+  // maintain insertion order of groups
+  const groupsOrder: string[] = [];
+  const groups = new Map<string, { header_value?: string; items: any[] }>();
+
+  raw.forEach((it: any) => {
+    const hk = it.header_key ?? "default";
+    if (!groups.has(hk)) {
+      groups.set(hk, { header_value: it.header_value, items: [] });
+      groupsOrder.push(hk);
+    }
+    groups.get(hk)!.items.push(it);
+  });
+
+  // build a flattened list of rows but attach groupKey on item rows for later subtotal calc
+  const cashflowRawRows: RatioRow[] = [];
+  groupsOrder.forEach((hk) => {
+    const g = groups.get(hk)!;
+    // header row (marker)
+    cashflowRawRows.push({
+      isGroup: true,
+      isHeader: true,
+      label: g.header_value ?? "",
+      key: `grp-${hk}`,
+    } as any);
+
+    // item rows (attach groupKey)
+    g.items.forEach((it) => {
+      cashflowRawRows.push({
+        key: it.key,
+        label: it.value,
+        ratio: typeof it.ratio === "number" ? `${it.ratio}%` : it.ratio,
+        rateScore: "-",
+        score: "-",
+        // custom helper for grouping/subtotals
+        groupKey: hk,
+      } as any);
+    });
+    // we'll insert a single Sub Total (for entire Part B) AFTER all groups
+  });
+
+  /* ---------- QUAL (unchanged) ---------- */
   const qualRaw = tpl?.qualitative_score?.qualitative_score_data ?? [];
   const qualRows: RatioRow[] = qualRaw
     .slice()
     .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
     .map((q: any) => {
-      // flexible ai score field names
       const ai = q.ai_score ?? q.aiScore ?? q.ai ?? undefined;
       const aiVal = typeof ai === "number" ? Number(ai.toFixed?.(2) ?? ai) : (ai ?? "-");
       return {
         key: String(q.category_id),
         label: `Category ${q.category_id}`,
         aiScore: aiVal,
-        finalScore: "-", // default, overwritten below from score data if present
+        finalScore: "-",
       };
     });
 
-  // build maps from scoreData
+  /* ---------- build maps from scoreData ---------- */
   const scoreMap = new Map<string, number>();
   (sc?.cashflow_analysis?.credit_score_data ?? []).forEach((s: any) => scoreMap.set(s.key, s.score));
   (sc?.pre_screening?.credit_score_data ?? []).forEach((s: any) => scoreMap.set(s.key, s.score));
 
   const qualMap = new Map<number, number>();
-  (sc?.qualitative_score?.qualitative_score_data ?? []).forEach((q: any) => qualMap.set(Number(q.category_id), q.final_score ?? q.score));
+  (sc?.qualitative_score?.qualitative_score_data ?? []).forEach((q: any) =>
+    qualMap.set(Number(q.category_id), q.final_score ?? q.score)
+  );
 
-  // apply scores for pre/cashflow rows
+  /* ---------- apply scores to pre rows ---------- */
   const applyScores = (rows: RatioRow[]) =>
     rows.map((r) => {
       if (r.isGroup) return r;
@@ -195,9 +213,57 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     });
 
   const preRowsApplied = applyScores(preRows);
-  const cashflowApplied = applyScores(cashflowRows);
 
-  // apply final scores from scoreData into qualRows
+  /* ---------- apply scores to cashflow raw rows (items only) ---------- */
+  const cashflowAppliedTemp = cashflowRawRows.map((r) => {
+    if (r.isHeader) return r;
+    // item row: get score from map
+    const s = typeof r.key === "string" ? scoreMap.get(r.key) : undefined;
+    if (typeof s === "number") {
+      r.rateScore = s;
+      r.score = calcRowScore(r);
+    } else {
+      r.rateScore = "-";
+      r.score = "-";
+    }
+    return r;
+  });
+
+  /* ---------- now build grouped cashflow rows (headers + children), then a single Sub Total ---------- */
+  const cashflowApplied: RatioRow[] = [];
+  // For each group in the same order, push: header, children
+  groupsOrder.forEach((hk) => {
+    // header
+    const headerRow = cashflowAppliedTemp.find((rr) => rr.isHeader && rr.key === `grp-${hk}`);
+    if (headerRow) {
+      cashflowApplied.push(headerRow);
+    } else {
+      // fallback header if not found
+      cashflowApplied.push({ isGroup: true, isHeader: true, label: groups.get(hk)!.header_value ?? "", key: `grp-${hk}` } as any);
+    }
+
+    // children
+    const children = cashflowAppliedTemp.filter((rr) => !rr.isHeader && rr.groupKey === hk);
+    children.forEach((c) => cashflowApplied.push(c));
+  });
+
+  // --- AFTER all groups: compute a single Sub Total row for the entire Part B ---
+  const cashItemsForSubtotal = cashflowApplied.filter((r) => !r.isGroup && !r.isFooter);
+  const ratioSumTotal = sumNumeric(cashItemsForSubtotal.map((c) => toNumber(c.ratio)));
+  const rateScoreSumTotal = sumNumeric(cashItemsForSubtotal.map((c) => (typeof c.rateScore === "number" ? c.rateScore : NaN)));
+  const scoreSumTotal = sumNumeric(cashItemsForSubtotal.map((c) => (typeof c.score === "number" ? c.score : NaN)));
+
+  cashflowApplied.push({
+    isGroup: true,
+    isFooter: true,
+    label: "Sub Total",
+    ratio: Number.isFinite(ratioSumTotal) ? `${ratioSumTotal}%` : "-",
+    rateScore: Number.isFinite(rateScoreSumTotal) ? rateScoreSumTotal : "-",
+    score: Number.isFinite(scoreSumTotal) ? scoreSumTotal : "-",
+    key: `sub-total`,
+  } as any);
+
+  /* ---------- qualitative applied ---------- */
   const qualApplied: RatioRow[] = qualRows.map((r) => {
     const cid = Number(r.key);
     const final = qualMap.get(cid);
@@ -207,34 +273,36 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     };
   });
 
-  // footers
+  /* ---------- footers ---------- */
   const preFooter = {
     label: "Total",
-    fullRate: 5 * preRowsApplied.length,
     rateScore: (() => {
       const s = preRowsApplied.map((r) => (typeof r.rateScore === "number" ? r.rateScore : NaN));
       const sum = sumNumeric(s);
       return Number.isFinite(sum) ? sum : "-";
     })(),
-    score: "-",
+    score: (() => {
+      const s = preRowsApplied.filter((r) => !r.isGroup).map((r) => (typeof r.score === "number" ? r.score : NaN));
+      const sum = sumNumeric(s);
+      return Number.isFinite(sum) ? sum : "-";
+    })(),
   };
 
-  const cashNumeric = cashflowApplied.filter((r) => !r.isGroup);
+  const cashItems = cashflowApplied.filter((r) => !r.isGroup && !r.isFooter);
   const cashFooter = {
     label: "Total",
     rateScore: (() => {
-      const s = cashNumeric.map((r) => (typeof r.rateScore === "number" ? r.rateScore : NaN));
+      const s = cashItems.map((r) => (typeof r.rateScore === "number" ? r.rateScore : NaN));
       const sum = sumNumeric(s);
       return Number.isFinite(sum) ? sum : "-";
     })(),
     score: (() => {
-      const s = cashNumeric.map((r) => (typeof r.score === "number" ? r.score : NaN));
+      const s = cashItems.map((r) => (typeof r.score === "number" ? r.score : NaN));
       const sum = sumNumeric(s);
       return Number.isFinite(sum) ? sum : "-";
     })(),
   };
 
-  // qualitative footer totals
   const qualFooter = {
     label: "Total",
     aiScore: (() => {
@@ -249,24 +317,51 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     })(),
   };
 
+  /* ---------- overview contributions & rows (as before) ---------- */
+  const preContribution = Number.isFinite(preFooter.score as number) ? Number(preFooter.score) : 0;
+  const cashContribution = Number.isFinite(cashFooter.score as number) ? Number(cashFooter.score) : 0;
+  const qualFinalSum = Number.isFinite(qualFooter.finalScore as number) ? Number(qualFooter.finalScore) : NaN;
+  const qualRatio = toNumber(tpl?.qualitative_score?.ratio_allocation ?? tpl?.qualitative_score ?? 0);
+  const qualContribution = Number.isFinite(qualFinalSum) ? +((qualFinalSum / 100) * qualRatio).toFixed(2) : 0;
+  const overviewCombined = +(preContribution + cashContribution + qualContribution).toFixed(2);
+
+  const overviewRows: RatioRow[] = [
+    {
+      label: "Part A: Pre Screening",
+      ratio: `${tpl?.pre_screening?.ratio_allocation ?? 0}%`,
+      score: Number.isFinite(preContribution) ? preContribution : "-",
+    },
+    {
+      label: "Part B: Cashflow Analysis",
+      ratio: `${tpl?.cashflow_analysis?.ratio_allocation ?? 0}%`,
+      score: Number.isFinite(cashContribution) ? cashContribution : "-",
+    },
+    {
+      label: "Part C: Qualitative",
+      ratio: `${tpl?.qualitative_score?.ratio_allocation ?? 0}%`,
+      score: Number.isFinite(qualContribution) ? qualContribution : "-",
+    },
+  ];
+
   return {
     overview: {
       title: "Overview",
+      // ensure overview columns reflect the requested header labels
       columns: ["Category", "Ratio Allocation", "Ratio Score"],
       rows: overviewRows,
-      footer: { label: "Total", ratio: "100%", score: "-" },
+      footer: { label: "Total", ratio: "100%", score: overviewCombined },
       icon: demoData.overview.icon,
     },
     preScreening: {
       title: "Part A: Pre Screening",
-      columns: ["Compliance", "Ratio Allocation", "Full Rate", "Rate Score", "Score"],
+      columns: ["Compliance", "Ratio Allocation", "Rate Score", "Score"],
       rows: preRowsApplied,
       footer: preFooter,
       icon: demoData.preScreening.icon,
     },
     cashflow: {
       title: "Part B: Cashflow Analysis",
-      columns: ["Compliance", "Ratio Allocation", "Full Rate", "Rate Score", "Score / 100"],
+      columns: ["Compliance", "Ratio Allocation", "Rate Score", "Score / 100"],
       rows: cashflowApplied,
       footer: cashFooter,
       icon: demoData.cashflow.icon,
@@ -287,6 +382,12 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
 
 /* ---------------- Editable controls ---------------- */
 
+/**
+ * EditableRate
+ * - presented as a dropdown button in table cell
+ * - CLOSED state styling: width 189px, height 32px, radius 6px, border 1px gray-300, padding ~ top8 right12 bottom8 left12
+ * - OPEN state: popup list with selected item highlighted and a check icon
+ */
 function EditableRate({
   value,
   canEdit,
@@ -309,39 +410,48 @@ function EditableRate({
 
   if (!canEdit) return <span>{display}</span>;
 
+  // map numeric to label quickly
+  const currentLabel = options.find((o) => String(o.value) === String(value))?.value ?? display;
+
   return (
     <div className="relative inline-block">
+      {/* CLOSED - styled button */}
       {!open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 hover:underline"
+          className="inline-flex items-center justify-between h-8 w-[189px] p-16 rounded-[6px] border border-gray-300 gap-1 text-sm bg-white"
           title="Edit"
         >
-          <span>{display}</span>
-          <Pencil className="size-12 text-gray-500" />
+          <span className="truncate">{currentLabel}</span>
+          {/* caret */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="ml-2">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"></path>
+          </svg>
         </button>
       ) : (
-        <div className="absolute z-30 mt-2 bg-white border rounded shadow min-w-[220px] p-2">
+        // OPEN - dropdown list
+        <div className="absolute z-30 mt-2 w-[220px] bg-white border border-gray-200 rounded-md shadow">
           <ul className="text-sm">
-            {options.map((o) => (
-              <li key={o.value}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSave(o.value);
-                    setOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded"
-                >
-                  <span className="block">{o.label}</span>
-                </button>
-              </li>
-            ))}
+            {options.map((o) => {
+              const selected = String(o.value) === String(value);
+              return (
+                <li key={o.value}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSave(o.value);
+                      setOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 ${selected ? "bg-gray-50" : "hover:bg-gray-50"}`}
+                  >
+                    <span className="truncate">{o.label}</span>
+                    {selected ? <Check className="size-14 text-[#EA5C2B]" /> : null}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-          <div className="text-right mt-1">
-            <button className="text-xs text-gray-500" onClick={() => setOpen(false)}>Cancel</button>
-          </div>
         </div>
       )}
     </div>
@@ -421,7 +531,7 @@ function EditableNumber({
   );
 }
 
-/* ---------------- Main drawer component ---------------- */
+/* ---------------- Main drawer component ----------------- */
 export default function CreditScoreDrawer({
   open,
   onOpenChange,
@@ -436,10 +546,10 @@ export default function CreditScoreDrawer({
   const params = useSearchParams();
   const { id } = useParams();
   const session = useSession();
-  const { data: dataInit } = useCaseDetailContext()
+  const { data: dataInit } = useCaseDetailContext();
   // @ts-expect-error rija
   const accessToken = session.data?.accessToken ?? "";
-  const canEdit = dataInit?.stage === '1st_review'
+  const canEdit = dataInit?.stage === "1st_review";
 
   /* refs for tabs */
   const overviewRef = React.useRef<HTMLDivElement | null>(null);
@@ -502,7 +612,7 @@ export default function CreditScoreDrawer({
       let targetIdx = -1;
       let count = -1;
       for (let i = 0; i < rows.length; i++) {
-        if (!rows[i].isGroup) {
+        if (!rows[i].isGroup && !rows[i].isHeader && !rows[i].isFooter) {
           count++;
           if (count === rowIdx) {
             targetIdx = i;
@@ -518,13 +628,39 @@ export default function CreditScoreDrawer({
       target.rateScore = next;
       target.score = calcRowScore(target);
 
-      const numericRows = rows.filter(r => !r.isGroup);
+      const numericRows = rows.filter(r => !r.isGroup && !r.isHeader && !r.isFooter);
       const sumRate = sumNumeric(numericRows.map(r => typeof r.rateScore === "number" ? r.rateScore : NaN));
       const sumScore = sumNumeric(numericRows.map(r => typeof r.score === "number" ? r.score : NaN));
 
       nextModel[sectionKey].footer ??= { label: "Total" };
       nextModel[sectionKey].footer!.rateScore = Number.isFinite(sumRate) ? sumRate : "-";
       nextModel[sectionKey].footer!.score = Number.isFinite(sumScore) ? sumScore : "-";
+
+      // Also update overview combined score live: recompute overview using current template ratios
+      try {
+        const tpl = templateData?.data ?? templateData ?? {};
+        const preContribution = Number.isFinite(Number(nextModel.preScreening.footer?.score)) ? Number(nextModel.preScreening.footer!.score) : 0;
+        const cashContribution = Number.isFinite(Number(nextModel.cashflow.footer?.score)) ? Number(nextModel.cashflow.footer!.score) : 0;
+
+        const qualRatioLocal = toNumber(tpl?.qualitative_score?.ratio_allocation ?? 0);
+        const qualFinalSumLocal = Number.isFinite(Number(nextModel.qualitative.footer?.finalScore)) ? Number(nextModel.qualitative.footer!.finalScore) : NaN;
+        const qualContributionLocal = Number.isFinite(qualFinalSumLocal) ? +((qualFinalSumLocal / 100) * qualRatioLocal).toFixed(2) : 0;
+
+        const overviewCombined = +(preContribution + cashContribution + qualContributionLocal).toFixed(2);
+
+        // set overview rows and footer
+        nextModel.overview.footer ??= { label: "Total", ratio: "100%", score: overviewCombined };
+        nextModel.overview.footer!.score = overviewCombined;
+
+        nextModel.overview.rows = [
+          { label: "Part A: Pre Screening", ratio: `${tpl?.pre_screening?.ratio_allocation ?? 0}%`, score: Number.isFinite(preContribution) ? preContribution : "-" },
+          { label: "Part B: Cashflow Analysis", ratio: `${tpl?.cashflow_analysis?.ratio_allocation ?? 0}%`, score: Number.isFinite(cashContribution) ? cashContribution : "-" },
+          { label: "Part C: Qualitative", ratio: `${tpl?.qualitative_score?.ratio_allocation ?? 0}%`, score: Number.isFinite(qualContributionLocal) ? qualContributionLocal : "-" },
+        ];
+      } catch {
+        // noop
+      }
+
       return nextModel;
     });
   };
@@ -546,11 +682,35 @@ export default function CreditScoreDrawer({
       (nextModel.qualitative.footer as any).aiScore = aiNums.length ? +aiNums.reduce((a, b) => a + b, 0).toFixed(2) : "-";
       (nextModel.qualitative.footer as any).finalScore = finalNums.length ? +finalNums.reduce((a, b) => a + b, 0).toFixed(2) : "-";
 
+      // update overview combined similarly
+      try {
+        const tpl = templateData?.data ?? templateData ?? {};
+        const preContribution = Number.isFinite(Number(nextModel.preScreening.footer?.score)) ? Number(nextModel.preScreening.footer!.score) : 0;
+        const cashContribution = Number.isFinite(Number(nextModel.cashflow.footer?.score)) ? Number(nextModel.cashflow.footer!.score) : 0;
+
+        const qualRatioLocal = toNumber(tpl?.qualitative_score?.ratio_allocation ?? 0);
+        const qualFinalSumLocal = Number.isFinite(Number(nextModel.qualitative.footer?.finalScore)) ? Number(nextModel.qualitative.footer!.finalScore) : NaN;
+        const qualContributionLocal = Number.isFinite(qualFinalSumLocal) ? +((qualFinalSumLocal / 100) * qualRatioLocal).toFixed(2) : 0;
+
+        const overviewCombined = +(preContribution + cashContribution + qualContributionLocal).toFixed(2);
+
+        nextModel.overview.footer ??= { label: "Total", ratio: "100%", score: overviewCombined };
+        nextModel.overview.footer!.score = overviewCombined;
+
+        nextModel.overview.rows = [
+          { label: "Part A: Pre Screening", ratio: `${tpl?.pre_screening?.ratio_allocation ?? 0}%`, score: Number.isFinite(preContribution) ? preContribution : "-" },
+          { label: "Part B: Cashflow Analysis", ratio: `${tpl?.cashflow_analysis?.ratio_allocation ?? 0}%`, score: Number.isFinite(cashContribution) ? cashContribution : "-" },
+          { label: "Part C: Qualitative", ratio: `${tpl?.qualitative_score?.ratio_allocation ?? 0}%`, score: Number.isFinite(qualContributionLocal) ? qualContributionLocal : "-" },
+        ];
+      } catch {
+        // noop
+      }
+
       return nextModel;
     });
   };
 
-  /* ---------------- DataTable renderer (inline editing) ---------------- */
+  /* Replace your existing RatioTable with this function */
   function RatioTable({
     section,
     editableKind, // "rateScore" | "qualScore" | "none"
@@ -560,87 +720,265 @@ export default function CreditScoreDrawer({
     editableKind: "rateScore" | "qualScore" | "none";
     onEdit?: (rowIdx: number, value: number) => void;
   }) {
-    // Build rows for render — for rateScore we use inline controls
-    let editableCounter = 0;
-    const rowsForRender = section.rows.map((r) => {
-      if (r.isGroup) return r;
+    // Helpers
+    const isGrouped = section.rows.some((r: any) => r.isHeader);
+    const labelCol = section.columns?.[0] ?? "Label";
+    const ratioCol = section.columns?.[1] ?? "Ratio";
+    const rateCol = section.columns?.[2] ?? "";
+    const scoreCol = section.columns?.[3] ?? "Score";
 
-      // Part C (qualitative) case
-      if (editableKind === "qualScore") {
-        const idx = editableCounter++;
-        return {
-          ...r,
-          aiScore: <span>{Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore).toFixed(2) : (r.aiScore ?? "-")}</span>,
-          finalScore: (
-            <EditableNumber
-              // @ts-expect-error rija
-              value={r.finalScore}
-              min={0}
-              max={100}
-              step={1}
-              canEdit={canEdit}
-              onSave={(n) => onEdit?.(idx, n)}
-            />
-          ),
-        } as RatioRow;
+    // Build groups (preserve order)
+    const groups: { header: any; items: RatioRow[] }[] = [];
+    let current: { header: any; items: RatioRow[] } | null = null;
+    section.rows.forEach((r: any) => {
+      if (r.isHeader) {
+        current = { header: r, items: [] };
+        groups.push(current);
+        return;
       }
+      if (r.isFooter) {
+        // footer rows (Sub Total) we will handle after groups
+        return;
+      }
+      // normal item
+      if (!current) {
+        current = { header: { label: "" }, items: [] };
+        groups.push(current);
+      }
+      current.items.push(r);
+    });
 
-      // Part A/B case
+    // find Sub Total row (single)
+    const subtotalRow: any = section.rows.find((r: any) => r.isFooter && (r.label === "Sub Total" || r.isFooter));
+
+    // section footer (Total)
+    const sectionFooter: any = section.footer ?? null;
+
+    // Render helpers for row cells
+    let editableCounter = 0;
+    const renderLabelCell = (r: RatioRow) => <div className="whitespace-pre-wrap">{r.label}</div>;
+    const renderRatioCell = (r: RatioRow) => <div>{r.ratio ?? "-"}</div>;
+    const renderRateCell = (r: any) => {
       if (editableKind === "rateScore") {
         const idx = editableCounter++;
-        return {
-          ...r,
-          rateScore: (
+        return (
+          <div>
             <EditableRate
-              // @ts-expect-error rija
               value={r.rateScore}
               canEdit={canEdit}
               onSave={(n) => onEdit?.(idx, n)}
             />
-          ),
-          score: <span>{calcRowScore(r)}</span>,
-        } as RatioRow;
+          </div>
+        );
       }
+      if (editableKind === "qualScore") {
+        const idx = editableCounter++;
+        return (
+          <EditableNumber
+            value={r.finalScore}
+            min={0}
+            max={100}
+            step={1}
+            canEdit={canEdit}
+            onSave={(n) => onEdit?.(idx, n)}
+          />
+        );
+      }
+      return <div>{r.rateScore ?? "-"}</div>;
+    };
+    const renderScoreCell = (r: RatioRow) => <div>{typeof r.score === "number" ? r.score : (r.score ?? "-")}</div>;
+    const renderQualAiCell = (r: RatioRow) => <div>{Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore).toFixed(2) : (r.aiScore ?? "-")}</div>;
+    const renderQualFinalCell = (r: RatioRow, idxForQual?: number) => (
+      <EditableNumber
+        // @ts-expect-error rija
+        value={r.finalScore}
+        min={0}
+        max={100}
+        step={1}
+        canEdit={canEdit}
+        onSave={(n) => onEdit?.(idxForQual ?? 0, n)}
+      />
+    );
 
-      // non-editable simple case
-      return r;
-    });
-
-    // Choose columns based on whether it's qualitative or not
-    const columns: DTColumn<RatioRow>[] =
-      editableKind === "qualScore"
-        ? [
-          { key: "label", header: section.columns[0], width: "40%", className: "p-6" },
-          { key: "aiScore", header: section.columns[1] ?? "AI Score", align: "left" },
-          { key: "finalScore", header: section.columns[2] ?? "Final Score", align: "left" },
-        ]
-        : [
-          { key: "label", header: section.columns[0], width: "40%", className: "p-6" },
-          { key: "ratio", header: section.columns[1] ?? "", align: "left" },
-          { key: "fullRate", header: section.columns[2] ?? "", align: "left" },
-          { key: "rateScore", header: section.columns[3] ?? "", align: "left" },
-          { key: "score", header: section.columns[4] ?? "", align: "left" },
-        ];
-
-    const footer =
-      section.footer && editableKind !== "none"
-        ? {
-          ...section.footer,
+    // If not grouped, fallback to previous DataTable behavior (small mapping)
+    if (!isGrouped) {
+      const rowsForRender = section.rows.map((r: any) => {
+        if (r.isGroup || r.isHeader || r.isFooter) return r;
+        if (editableKind === "qualScore") {
+          const idx = editableCounter++;
+          return {
+            ...r,
+            aiScore: <span>{Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore).toFixed(2) : (r.aiScore ?? "-")}</span>,
+            finalScore: (
+              <EditableNumber
+                value={r.finalScore}
+                min={0}
+                max={100}
+                step={1}
+                canEdit={canEdit}
+                onSave={(n) => onEdit?.(idx, n)}
+              />
+            ),
+          } as RatioRow;
         }
-        : section.footer;
+        if (editableKind === "rateScore") {
+          const idx = editableCounter++;
+          return {
+            ...r,
+            rateScore: (
+              <EditableRate
+                value={r.rateScore}
+                canEdit={canEdit}
+                onSave={(n) => onEdit?.(idx, n)}
+              />
+            ),
+            score: <span>{calcRowScore(r)}</span>
+          } as RatioRow;
+        }
+        return r;
+      });
+      const footer = section.footer && editableKind !== "none" ? { ...section.footer } : section.footer;
 
+      return (
+        <div>
+          <div className="py-3 mt-[16px] flex items-center gap-2">
+            <div className="font-medium text-sm">{section.title}</div>
+          </div>
+          <div className="p-0">
+            <DataTable
+              columns={
+                // Qualitative (non-grouped) uses 3 cols: label | aiScore | finalScore
+                editableKind === "qualScore"
+                  ? [
+                    { key: "label", header: labelCol, width: "40%", className: "p-6" },
+                    { key: "aiScore", header: section.columns[1] ?? "AI Score", align: "left" },
+                    { key: "finalScore", header: section.columns[2] ?? "Final Score", align: "left" },
+                  ]
+                  : // Non-qual sections:
+                  // If section defines 3 columns (overview case: Category | Ratio Allocation | Ratio Score)
+                  section.columns && section.columns.length === 3 && editableKind === "none"
+                    ? [
+                      { key: "label", header: labelCol, width: "40%", className: "p-6" },
+                      { key: "ratio", header: section.columns[1] ?? ratioCol, align: "left" },
+                      { key: "score", header: section.columns[2] ?? scoreCol, align: "left" },
+                    ]
+                    : [
+                      // fallback: label | ratio | rateScore | score (existing behavior)
+                      { key: "label", header: labelCol, width: "40%", className: "p-6" },
+                      { key: "ratio", header: ratioCol ?? "", align: "left" },
+                      { key: "rateScore", header: rateCol ?? "", align: "left" },
+                      { key: "score", header: scoreCol ?? "", align: "left" },
+                    ]
+              }
+              rows={[...rowsForRender, ...(footer ? [footer] : [])]}
+              zebra
+              dense
+            />
+
+          </div>
+        </div>
+      );
+    }
+
+    // GROUPED rendering with plain table markup
     return (
       <div>
         <div className="py-3 mt-[16px] flex items-center gap-2">
           <div className="font-medium text-sm">{section.title}</div>
         </div>
-        <div className="p-0">
-          <DataTable
-            columns={columns}
-            rows={[...rowsForRender, ...(footer ? [footer] : [])]}
-            zebra
-            dense
-          />
+
+        <div className="overflow-hidden rounded-md border">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-12 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{labelCol}</th>
+                {editableKind === "qualScore" ? null : (
+                  <>
+                    <th className="px-6 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{ratioCol}</th>
+                    <th className="px-6 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{rateCol}</th>
+                  </>
+                )}
+                <th className="px-6 py-3 text-left text-gray-500 text-sm font-medium text-muted-foreground">{editableKind === "qualScore" ? section.columns[1] ?? "AI Score" : scoreCol}</th>
+                {editableKind === "qualScore" && <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">{section.columns[2] ?? "Final Score"}</th>}
+              </tr>
+            </thead>
+
+            <tbody className="bg-white divide-y divide-gray-100">
+              {groups.map((g, gi) => (
+                <React.Fragment key={`g-${gi}`}>
+                  {/* full-width group header */}
+                  <tr className="bg-gray-100 text-gray-600 font-medium">
+                    <td className="p-12 text-14 border-t border-gray-200" colSpan={editableKind === "qualScore" ? 4 : 4}>
+                      {g.header.label}
+                    </td>
+                  </tr>
+
+                  {/* group items */}
+                  {g.items.map((r: any, idx: number) => (
+                    <tr key={`${g.header?.label || "grp"}-item-${idx}`} className="bg-white">
+                      <td className="p-12 text-sm text-gray-900 font-medium">{renderLabelCell(r)}</td>
+
+                      {editableKind === "qualScore" ? (
+                        <>
+                          <td className="p-12 text-sm text-gray-900 font-medium">{renderQualAiCell(r)}</td>
+                          <td className="p-12 text-sm text-gray-900 font-medium">
+                            {renderQualFinalCell(r, gi + idx)}
+                          </td>
+                          <td className="p-12 text-sm text-gray-900 font-medium">{/* empty or add something */}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-12 text-sm text-gray-900 font-medium">{renderRatioCell(r)}</td>
+                          <td className="p-12 text-sm text-gray-900 font-medium">{renderRateCell(r)}</td>
+                          <td className="p-12 text-sm text-gray-900 font-medium">{renderScoreCell(r)}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+
+              {/* Sub Total row (single, right before Total) */}
+              {subtotalRow && (
+                <tr className="font-semibold bg-gray-100">
+                  <td className="p-12 text-14 text-gray-900 font-semibold border-t border-gray-200">{subtotalRow.label ?? "Sub Total"}</td>
+                  {editableKind === "qualScore" ? (
+                    <>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.aiScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.finalScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200" />
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.ratio ?? "-"}</td>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.rateScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.score ?? "-"}</td>
+                    </>
+                  )}
+                </tr>
+              )}
+
+              {/* Section footer (Total) as final row */}
+              {sectionFooter && (
+                <tr className="bg-gray-100">
+                  <td className="p-12 text-14 text-right text-gray-900 font-semibold border-t border-gray-200">{sectionFooter.label ?? "Total"}</td>
+                  {editableKind === "qualScore" ? (
+                    <>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).aiScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).finalScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200" />
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200"></td>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200"></td>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).score ?? "-"}</td>
+                    </>
+                  )}
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -664,11 +1002,11 @@ export default function CreditScoreDrawer({
   /* Build payload from current model */
   const buildPayload = (): PostCreditScoreRequest => {
     const pre = model.preScreening.rows
-      .filter(r => !r.isGroup)
+      .filter(r => !r.isGroup && !r.isHeader && !r.isFooter)
       .map(r => ({ key: r.key as any, score: Number(r.rateScore) })) as any[];
 
     const cash = model.cashflow.rows
-      .filter(r => !r.isGroup)
+      .filter(r => !r.isGroup && !r.isHeader && !r.isFooter)
       .map(r => ({ key: r.key as any, score: Number(r.rateScore) })) as any[];
 
     const qual = model.qualitative.rows
@@ -686,11 +1024,11 @@ export default function CreditScoreDrawer({
     if (!canEdit) return false;
 
     const preOk = model.preScreening.rows
-      .filter(r => !r.isGroup)
+      .filter(r => !r.isGroup && !r.isHeader && !r.isFooter)
       .every(r => Number.isFinite(Number(r.rateScore)));
 
     const cashOk = model.cashflow.rows
-      .filter(r => !r.isGroup)
+      .filter(r => !r.isGroup && !r.isHeader && !r.isFooter)
       .every(r => Number.isFinite(Number(r.rateScore)));
 
     const qualOk = model.qualitative.rows
@@ -733,7 +1071,6 @@ export default function CreditScoreDrawer({
                 </Button>
               </div>
             )}
-
           </div>
         </SheetHeader>
 
@@ -816,11 +1153,6 @@ export default function CreditScoreDrawer({
                     editableKind="qualScore"
                     onEdit={(rowIdx, val) => updateQualScore(rowIdx, val)}
                   />
-                  <div className="mt-[60px]">
-                    <div className="aspect-square w-full rounded-xl border grid place-items-center text-xs text-muted-foreground">
-                      Add your radar chart here
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

@@ -62,7 +62,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       cell.className ?? "",
                     ].join(" ")}
                   >
-                    {cell.title}
+                    {cell.title} ddsdf
                   </TableHead>
                 ))}
               </TableRow>

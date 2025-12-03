@@ -28,7 +28,6 @@ export function DataTable<T extends Record<string, unknown>>({
   dense = false,
   zebra = false,
   className,
-  // NEW: if provided, we render these header rows instead of the default one
   complexHeader,
 }: {
   columns: DTColumn<T>[];

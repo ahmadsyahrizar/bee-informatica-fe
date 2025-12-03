@@ -143,7 +143,7 @@ export default function VideoCallLogDrawer({ open, onOpenChange, logType = "vide
                                                         </div>
 
                                                         <div ref={refStructured} className="scroll-mt-[100px]">
-                                                                <StructuredTable rows={mergedData.structured} />
+                                                                <StructuredTable rows={mergedData?.structured ?? []} />
                                                         </div>
 
                                                         <div ref={refVideo} className="scroll-mt-[100px]">

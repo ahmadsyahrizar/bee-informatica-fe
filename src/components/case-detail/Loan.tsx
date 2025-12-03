@@ -33,7 +33,7 @@ function CardShell({
 /** Read-only applied amount card */
 export function AppliedAmountCard({ amount }: { amount?: number | null }) {
  return (
-  <CardShell label="Applied Loan Amount p-16">
+  <CardShell label="Applied Loan Amount">
    <div className="text-[20px] font-semibold text-gray-900 pl-16">
     {amount != null ? formatRM(amount) : "-"}
    </div>

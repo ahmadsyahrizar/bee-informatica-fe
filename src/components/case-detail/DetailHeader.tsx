@@ -401,7 +401,7 @@ export function DetailHeader() {
                         open={openNextStage}
                         onClose={() => setOpenNextStage(false)}
                         onConfirm={() => nextStageMutation.mutate()}
-                        stage={stage === "rejected" ? "phone" : (stage as "phone" | "video")}
+                        stage={stage}
                     />
 
                     {/* OFFER modal (CAM review -> offer) */}

@@ -2,8 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-
-type Stage = "phone" | "video";
+import { Stage } from "@/types/case";
 
 export default function NextStageModal({
  open,
@@ -17,6 +16,12 @@ export default function NextStageModal({
  stage: Stage;
 }) {
  if (!open) return null;
+
+ const remappedstageToNext: Record<"phone" | "video" | "1st_review", string> = {
+  phone: "Video",
+  video: "1st Review",
+  "1st_review": "CAM",
+ }
 
  return (
   <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/30">
@@ -37,7 +42,7 @@ export default function NextStageModal({
      {/* content */}
      <div className="flex-1">
       <h3 className="text-2xl font-semibold text-gray-900">
-       Proceed to {stage === "video" ? "Next Stage" : "Video Stage"} ?
+       Proceed to {remappedstageToNext[stage as keyof typeof remappedstageToNext]} Stage ?
       </h3>
 
       <p className="mt-3 text-gray-600 text-base leading-7">

@@ -56,10 +56,11 @@ const demoData: CreditScoreData = {
   qualitative: {
     title: "Part C: Qualitative",
     icon: <ClipboardList className="size-16" />,
-    columns: ["Category", "AI Score", "Final Score"],
+    columns: ["Category", "AI Score", "AI Reasoning", "Final Score"],
     rows: [],
     footer: { label: "Total", aiScore: "-", finalScore: "-" } as any,
   },
+
 };
 
 /* ---------------- Utilities ---------------- */
@@ -172,20 +173,85 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
   });
 
   /* ---------- QUAL (unchanged) ---------- */
-  const qualRaw = tpl?.qualitative_score?.qualitative_score_data ?? [];
-  const qualRows: RatioRow[] = qualRaw
-    .slice()
-    .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-    .map((q: any) => {
-      const ai = q.ai_score ?? q.aiScore ?? q.ai ?? undefined;
-      const aiVal = typeof ai === "number" ? Number(ai.toFixed?.(2) ?? ai) : (ai ?? "-");
-      return {
-        key: String(q.category_id),
-        label: `Category ${q.category_id}`,
-        aiScore: aiVal,
-        finalScore: "-",
-      };
-    });
+  /* ---------- QUAL (updated: hardcoded categories + mapping from scoreData) ---------- */
+
+  // Hardcoded categories (as requested)
+  const HARD_CODED_QUAL_CATS = [
+    { category_id: 1, key: "emotional_stability", order: 1, max_scale: 6 },
+    { category_id: 2, key: "response_timing", order: 2, max_scale: 4 },
+    { category_id: 3, key: "consistency", order: 3, max_scale: 6 },
+    { category_id: 4, key: "demeanor", order: 4, max_scale: 4 },
+  ];
+
+  // breakdown object from score response (prefer scoreData)
+  const partCBreakdown =
+    sc?.qualitative_score?.raw_part_c_data?.part_c_score_breakdown ??
+    tpl?.qualitative_score?.raw_part_c_data?.part_c_score_breakdown ??
+    {};
+
+  // map final/editable scores from scoreData.qualitative_score.qualitative_score_data (by category_id)
+  const qualFinalMap = new Map<number, number>();
+  (sc?.qualitative_score?.qualitative_score_data ?? []).forEach((q: any) => {
+    const cid = Number(q.category_id);
+    if (Number.isFinite(cid)) {
+      qualFinalMap.set(cid, q.final_score ?? q.score);
+    }
+  });
+
+  // Build rows using HARD_CODED_QUAL_CATS, mapping aiScore & aiReason from partCBreakdown by key,
+  // and finalScore from qualFinalMap by category_id.
+  const qualApplied: RatioRow[] = HARD_CODED_QUAL_CATS.map((cat) => {
+    const breakdown = partCBreakdown?.[cat.key] ?? {};
+    // aiScore from breakdown.score (may be numeric)
+    const aiScoreVal =
+      typeof breakdown?.score === "number"
+        ? +(breakdown.score.toFixed?.(2) ?? breakdown.score)
+        : breakdown?.score ?? "-";
+    // ensure aiReason visible (use "-" if empty)
+    const aiReasonVal = (typeof breakdown?.reason === "string" && breakdown.reason.trim() !== "") ? breakdown.reason : "-";
+    let finalFromMap;
+    if (qualFinalMap.has(cat.category_id)) {
+      finalFromMap = qualFinalMap.get(cat.category_id);
+    } else {
+      // default to aiScore
+      const ai = typeof breakdown?.score === "number"
+        ? +(breakdown.score.toFixed?.(2) ?? breakdown.score)
+        : Number(breakdown?.score);
+
+      finalFromMap = Number.isFinite(ai) ? ai : 0;
+    }
+
+    return {
+      key: String(cat.category_id),
+      label: `${cat.category_id}. ${cat.key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())}`,
+      aiScore: Number.isFinite(Number(aiScoreVal))
+        ? +Number(aiScoreVal).toFixed(2)
+        : (aiScoreVal ?? "-"),
+      aiReason: aiReasonVal,
+      finalScore: Number.isFinite(Number(finalFromMap))
+        ? Number(finalFromMap)
+        : (finalFromMap ?? "-"),
+    } as RatioRow;
+
+  });
+
+  // qualitative footer sums (aiScore and finalScore)
+  const qualFooter = {
+    label: "Total",
+    aiScore: (() => {
+      const nums = qualApplied.map((r) => (Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore) : NaN));
+      const s = sumNumeric(nums);
+      return Number.isFinite(s) ? s : "-";
+    })(),
+    finalScore: (() => {
+      const nums = qualApplied.map((r) => (Number.isFinite(Number(r.finalScore)) ? Number(r.finalScore) : NaN));
+      const s = sumNumeric(nums);
+      return Number.isFinite(s) ? s : "-";
+    })(),
+  };
+
 
   /* ---------- build maps from scoreData ---------- */
   const scoreMap = new Map<string, number>();
@@ -263,16 +329,6 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     key: `sub-total`,
   } as any);
 
-  /* ---------- qualitative applied ---------- */
-  const qualApplied: RatioRow[] = qualRows.map((r) => {
-    const cid = Number(r.key);
-    const final = qualMap.get(cid);
-    return {
-      ...r,
-      finalScore: typeof final === "number" ? final : r.finalScore ?? "-",
-    };
-  });
-
   /* ---------- footers ---------- */
   const preFooter = {
     label: "Total",
@@ -298,20 +354,6 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     })(),
     score: (() => {
       const s = cashItems.map((r) => (typeof r.score === "number" ? r.score : NaN));
-      const sum = sumNumeric(s);
-      return Number.isFinite(sum) ? sum : "-";
-    })(),
-  };
-
-  const qualFooter = {
-    label: "Total",
-    aiScore: (() => {
-      const s = qualApplied.map((r) => (typeof r.aiScore === "number" ? r.aiScore : NaN));
-      const sum = sumNumeric(s);
-      return Number.isFinite(sum) ? sum : "-";
-    })(),
-    finalScore: (() => {
-      const s = qualApplied.map((r) => (typeof r.finalScore === "number" ? r.finalScore : NaN));
       const sum = sumNumeric(s);
       return Number.isFinite(sum) ? sum : "-";
     })(),
@@ -368,7 +410,7 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
     },
     qualitative: {
       title: "Part C: Qualitative",
-      columns: ["Category", "AI Score", "Final Score"],
+      columns: ["Category", "AI Score", "AI Reasoning", "Final Score"],
       rows: qualApplied,
       footer: {
         label: "Total",
@@ -376,7 +418,7 @@ function mergeTemplateAndScore(templateData: any, scoreData: any): CreditScoreDa
         finalScore: qualFooter.finalScore,
       } as any,
       icon: demoData.qualitative.icon,
-    },
+    }
   } as CreditScoreData;
 }
 
@@ -488,28 +530,34 @@ function EditableNumber({
 
   if (!editing) {
     return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="inline-flex items-center gap-2 hover:underline"
-        title="Edit"
-      >
-        <span>{Number.isFinite(Number(value)) ? value : (value ?? "-")}</span>
-        <Pencil className="size-12 text-gray-500" />
-      </button>
+      <div className=" flex items-center justify-start gap-2">
+        <div className="text-right">
+          <span className="inline-block">{Number.isFinite(Number(value)) ? value : (value ?? "-")}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="inline-flex items-center justify-center p-1"
+          title="Edit final score"
+          aria-label="Edit final score"
+        >
+          <Pencil className="size-12 text-gray-500" />
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <>
       <input
-        type="number"
-        className="h-5 w-[60px] rounded border pl-2 text-sm"
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         value={draft as number | string}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => setDraft(e.target.value === "" ? "" : Number(e.target.value))}
+        onChange={(e) => {
+          const v = e.target.value.replace(/[^\d]/g, "");
+          setDraft(v === "" ? "" : Number(v));
+        }}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             if (draft !== "" && !Number.isNaN(Number(draft))) onSave(Number(draft));
@@ -517,18 +565,39 @@ function EditableNumber({
           }
           if (e.key === "Escape") setEditing(false);
         }}
+        className="
+        w-[70px]
+        bg-[#EEF2F6]
+        px-3 py-2
+        text-sm
+        border-0
+        border-b
+        border-b-[#FF4700]
+        focus:outline-none
+        focus:border-b-2
+        focus:border-b-[#FF4700]
+        rounded-none
+        text-right
+        "
+        style={{
+          WebkitAppearance: "none",
+          MozAppearance: "textfield",
+        }}
       />
+
       <button
+        className="w-2"
         onClick={() => {
           if (draft !== "" && !Number.isNaN(Number(draft))) onSave(Number(draft));
           setEditing(false);
         }}
         title="Save"
       >
-        <Check className="size-12 text-success" />
+        <Check className="size-14 text-[#00A36F]" />
       </button>
-    </div>
+    </>
   );
+
 }
 
 /* ---------------- Main drawer component ----------------- */
@@ -607,8 +676,6 @@ export default function CreditScoreDrawer({
     setModel(prev => {
       const nextModel = cloneModel(prev);
       const rows = nextModel[sectionKey].rows;
-
-      // find the target index among non-group rows (matching the editableCounter indexing)
       let targetIdx = -1;
       let count = -1;
       for (let i = 0; i < rows.length; i++) {
@@ -703,7 +770,6 @@ export default function CreditScoreDrawer({
           { label: "Part C: Qualitative", ratio: `${tpl?.qualitative_score?.ratio_allocation ?? 0}%`, score: Number.isFinite(qualContributionLocal) ? qualContributionLocal : "-" },
         ];
       } catch {
-        // noop
       }
 
       return nextModel;
@@ -713,7 +779,7 @@ export default function CreditScoreDrawer({
   /* Replace your existing RatioTable with this function */
   function RatioTable({
     section,
-    editableKind, // "rateScore" | "qualScore" | "none"
+    editableKind,
     onEdit,
   }: {
     section: Section;
@@ -756,7 +822,12 @@ export default function CreditScoreDrawer({
 
     // Render helpers for row cells
     let editableCounter = 0;
-    const renderLabelCell = (r: RatioRow) => <div className="whitespace-pre-wrap">{r.label}</div>;
+    const rowTextClass = "font-medium text-[14px] leading-[20px] text-[#121926] font-inter whitespace-pre-wrap";
+
+    const renderLabelCell = (r: RatioRow) => (
+      <div className={rowTextClass}>{r.label}</div>
+    );
+
     const renderRatioCell = (r: RatioRow) => <div>{r.ratio ?? "-"}</div>;
     const renderRateCell = (r: any) => {
       if (editableKind === "rateScore") {
@@ -787,18 +858,27 @@ export default function CreditScoreDrawer({
       return <div>{r.rateScore ?? "-"}</div>;
     };
     const renderScoreCell = (r: RatioRow) => <div>{typeof r.score === "number" ? r.score : (r.score ?? "-")}</div>;
-    const renderQualAiCell = (r: RatioRow) => <div>{Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore).toFixed(2) : (r.aiScore ?? "-")}</div>;
-    const renderQualFinalCell = (r: RatioRow, idxForQual?: number) => (
-      <EditableNumber
-        // @ts-expect-error rija
-        value={r.finalScore}
-        min={0}
-        max={100}
-        step={1}
-        canEdit={canEdit}
-        onSave={(n) => onEdit?.(idxForQual ?? 0, n)}
-      />
+    const renderQualAiCell = (r: RatioRow) => (
+      <div className={rowTextClass}>
+        {Number.isFinite(Number(r.aiScore))
+          ? Number(r.aiScore).toFixed(2)
+          : (r.aiScore ?? "-")}
+      </div>
     );
+
+    const renderQualFinalCell = (r: RatioRow, idxForQual?: number) => {
+      return (
+        <EditableNumber
+          // @ts-expect-error rija
+          value={r.finalScore}
+          min={0}
+          max={100}
+          step={1}
+          canEdit={canEdit}
+          onSave={(n) => onEdit?.(idxForQual ?? 0, n)}
+        />
+      );
+    };
 
     // If not grouped, fallback to previous DataTable behavior (small mapping)
     if (!isGrouped) {
@@ -806,9 +886,19 @@ export default function CreditScoreDrawer({
         if (r.isGroup || r.isHeader || r.isFooter) return r;
         if (editableKind === "qualScore") {
           const idx = editableCounter++;
+          const reasonText = (r.aiReason ?? "").toString() || "-";
           return {
             ...r,
-            aiScore: <span>{Number.isFinite(Number(r.aiScore)) ? Number(r.aiScore).toFixed(2) : (r.aiScore ?? "-")}</span>,
+            aiScore: <span>{Number.isFinite(Number(r.aiScore)) ? Number(Number(r.aiScore).toFixed?.(2) ?? r.aiScore) : (r.aiScore ?? "-")}</span>,
+            aiReason: (
+              <div
+                className={`max-w-[520px] truncate ${rowTextClass}`}
+                title={reasonText}
+              >
+                {reasonText}
+              </div>
+            ),
+
             finalScore: (
               <EditableNumber
                 value={r.finalScore}
@@ -847,12 +937,43 @@ export default function CreditScoreDrawer({
           <div className="p-0">
             <DataTable
               columns={
-                // Qualitative (non-grouped) uses 3 cols: label | aiScore | finalScore
                 editableKind === "qualScore"
                   ? [
-                    { key: "label", header: labelCol, width: "40%", className: "p-6" },
-                    { key: "aiScore", header: section.columns[1] ?? "AI Score", align: "left" },
-                    { key: "finalScore", header: section.columns[2] ?? "Final Score", align: "left" },
+                    { key: "label", header: labelCol, width: "10%", className: "p-6" },
+                    {
+                      key: "aiScore",
+                      header: (
+                        <span
+                          className="font-semibold text-[12px] leading-[18px]"
+                          style={{
+                            background: "linear-gradient(45deg, #AD00FE 0%, #00E0EE 100%)",
+                            WebkitBackgroundClip: "text",
+                            color: "transparent",
+                          }}
+                        >
+                          {section.columns[1] ?? "AI Score"}
+                        </span>
+                      ),
+                      align: "left",
+                    },
+                    {
+                      key: "aiReason",
+                      header: (
+                        <span
+                          className="font-semibold text-[12px] leading-[18px]"
+                          style={{
+                            background: "linear-gradient(45deg, #AD00FE 0%, #00E0EE 100%)",
+                            WebkitBackgroundClip: "text",
+                            color: "transparent",
+                          }}
+                        >
+                          {section.columns[2] ?? "AI Reasoning"}
+                        </span>
+                      ),
+                      align: "left",
+                    },
+                    { key: "finalScore", header: section.columns[3] ?? "Final Score", align: "left" },
+
                   ]
                   : // Non-qual sections:
                   // If section defines 3 columns (overview case: Category | Ratio Allocation | Ratio Score)
@@ -888,18 +1009,55 @@ export default function CreditScoreDrawer({
         </div>
 
         <div className="overflow-hidden rounded-md border">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full table-fixed divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-12 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{labelCol}</th>
                 {editableKind === "qualScore" ? null : (
                   <>
-                    <th className="px-6 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{ratioCol}</th>
-                    <th className="px-6 py-3 text-gray-500 text-left text-sm font-medium text-muted-foreground">{rateCol}</th>
+                    <th className="px-6 py-3 text-gray-900 text-left text-sm font-medium text-muted-foreground">{ratioCol}</th>
+                    <th className="px-6 py-3 text-gray-900 text-left text-sm font-medium text-muted-foreground">{rateCol}</th>
                   </>
                 )}
-                <th className="px-6 py-3 text-left text-gray-500 text-sm font-medium text-muted-foreground">{editableKind === "qualScore" ? section.columns[1] ?? "AI Score" : scoreCol}</th>
-                {editableKind === "qualScore" && <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">{section.columns[2] ?? "Final Score"}</th>}
+
+                {editableKind === "qualScore" ? (
+                  <>
+                    <th className="px-6 py-3">
+                      <span
+                        className="font-semibold text-[12px] leading-[18px]"
+                        style={{
+                          background: "linear-gradient(45deg, #AD00FE 0%, #00E0EE 100%)",
+                          WebkitBackgroundClip: "text",
+                          color: "transparent",
+                        }}
+                      >
+                        {section.columns[1] ?? "AI Score"}
+                      </span>
+                    </th>
+
+                    <th className="px-6 py-3 ">
+                      <span
+                        className="font-semibold text-[12px] leading-[18px]"
+                        style={{
+                          background: "linear-gradient(45deg, #AD00FE 0%, #00E0EE 100%)",
+                          WebkitBackgroundClip: "text",
+                          color: "transparent",
+                        }}
+                      >
+                        {section.columns[2] ?? "AI Reasoning"}
+                      </span>
+                    </th>
+
+                    <th className="px-6 py-3 text-right text-sm font-medium text-muted-foreground" style={{ width: 50 }}>
+                      {section.columns[3] ?? "Final Score"}
+                    </th>
+
+
+                  </>
+                ) : (
+                  <th className="px-6 py-3 text-left text-gray-500 text-sm font-medium text-muted-foreground">{scoreCol}</th>
+                )}
+
               </tr>
             </thead>
 
@@ -908,7 +1066,7 @@ export default function CreditScoreDrawer({
                 <React.Fragment key={`g-${gi}`}>
                   {/* full-width group header */}
                   <tr className="bg-gray-100 text-gray-600 font-medium">
-                    <td className="p-12 text-14 border-t border-gray-200" colSpan={editableKind === "qualScore" ? 4 : 4}>
+                    <td className="p-12 text-14 border-t border-gray-200" colSpan={editableKind === "qualScore" ? 3 : 4}>
                       {g.header.label}
                     </td>
                   </tr>
@@ -916,21 +1074,28 @@ export default function CreditScoreDrawer({
                   {/* group items */}
                   {g.items.map((r: any, idx: number) => (
                     <tr key={`${g.header?.label || "grp"}-item-${idx}`} className="bg-white">
-                      <td className="p-12 text-sm text-gray-900 font-medium">{renderLabelCell(r)}</td>
+                      <td className="p-12">
+                        <div className={rowTextClass}>{renderLabelCell(r)}</div></td>
 
                       {editableKind === "qualScore" ? (
                         <>
-                          <td className="p-12 text-sm text-gray-900 font-medium">{renderQualAiCell(r)}</td>
-                          <td className="p-12 text-sm text-gray-900 font-medium">
+                          <td className="p-12 text-sm text-gray-900 font-medium w-[620px] align-top">
+                            {renderQualAiCell(r)}
+                          </td>
+
+                          <td className="px-6 py-3 text-sm text-gray-900 font-medium text-right" style={{ width: 200 }}>
                             {renderQualFinalCell(r, gi + idx)}
                           </td>
-                          <td className="p-12 text-sm text-gray-900 font-medium">{/* empty or add something */}</td>
+
                         </>
                       ) : (
                         <>
-                          <td className="p-12 text-sm text-gray-900 font-medium">{renderRatioCell(r)}</td>
-                          <td className="p-12 text-sm text-gray-900 font-medium">{renderRateCell(r)}</td>
-                          <td className="p-12 text-sm text-gray-900 font-medium">{renderScoreCell(r)}</td>
+                          <td className="p-12">
+                            <div className={rowTextClass}>{renderRatioCell(r)}</div></td>
+                          <td className="p-12">
+                            <div className={rowTextClass}>{renderRateCell(r)}</div></td>
+                          <td className="p-12 text-right">
+                            <div className={rowTextClass}>{renderScoreCell(r)}</div></td>
                         </>
                       )}
                     </tr>
@@ -945,8 +1110,9 @@ export default function CreditScoreDrawer({
                   {editableKind === "qualScore" ? (
                     <>
                       <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.aiScore ?? "-"}</td>
-                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.finalScore ?? "-"}</td>
-                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200" />
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200">{subtotalRow.aiReason ?? "-"}</td>
+                      <td className="px-6 py-3 text-14 text-gray-900 font-medium border-t border-gray-200 text-right" style={{ width: 100 }}>{subtotalRow.finalScore ?? "-"}</td>
+
                     </>
                   ) : (
                     <>
@@ -965,8 +1131,8 @@ export default function CreditScoreDrawer({
                   {editableKind === "qualScore" ? (
                     <>
                       <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).aiScore ?? "-"}</td>
+                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).aiReason ?? "-"}</td>
                       <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200">{(sectionFooter as any).finalScore ?? "-"}</td>
-                      <td className="px-6 py-3 text-sm text-gray-900 font-medium border-t border-gray-200" />
                     </>
                   ) : (
                     <>
@@ -1147,7 +1313,7 @@ export default function CreditScoreDrawer({
               </div>
 
               <div ref={qualRef} id="section-qual">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 gap-8">
                   <RatioTable
                     section={model.qualitative}
                     editableKind="qualScore"

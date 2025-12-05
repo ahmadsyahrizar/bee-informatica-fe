@@ -1,6 +1,6 @@
 import useCaseDetail from "@/hooks/useCaseDetail";
 import { useParams } from "next/navigation";
-import { SocialMedia } from "./SocialMedia";
+import SocialMedia from "./SocialMedia";
 import { PhotosSection } from "./media/photoSection";
 import { OtherDocumentsSection } from "./media/otherDocuments";
 import { SocialMediaDataResponse } from "@/types/api/social-media.type";
@@ -12,7 +12,6 @@ const MediaContainer = () => {
  const igUrl = data?.instagram_url || "";
  const photos = data?.photos || [];
  const documents = data?.other_docs || [];
- console.log({ documents });
 
  return (
   <div>

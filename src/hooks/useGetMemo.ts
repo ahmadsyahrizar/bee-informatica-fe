@@ -5,12 +5,13 @@ import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 
 export function useGetMemo(caseId?: string | number) {
+ console.log({ caseId })
  // @ts-expect-error rija
  const accessToken = useSession().data?.accessToken ?? "";
  const queryClient = useQueryClient();
 
  const query = useQuery({
-  queryKey: ["getMemo"],
+  queryKey: ["getMemo", caseId],
   queryFn: async () => {
    return await GetMemo<GetMemoResponse[]>({
     accessToken,
@@ -18,8 +19,9 @@ export function useGetMemo(caseId?: string | number) {
     // stage: stage as PayloadMemoRequest["stage"],
    });
   },
-  enabled: !!caseId,
+  enabled: !!caseId && !!accessToken,
   staleTime: 1000 * 60 * 2,
+  retry: 2
  });
 
  const entries = useMemo(() => {

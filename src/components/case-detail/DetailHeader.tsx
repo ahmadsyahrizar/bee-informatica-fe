@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { Suspense, useRef, useState } from "react";
 import MemoLog from "./MemoLog";
 import { Button } from "@/components/ui/button";
 import iconReject from "@/assets/icons/icon-reject-black.svg";
@@ -423,13 +423,15 @@ export function DetailHeader() {
                 </>
             }
 
-            <DecisionHistory
-                open={openModalHistory}
-                onClose={handleCloseHistory}
-                entries={memoEntries}
-                title="Decision History"
-                revertItems={revertHistories?.revertItems}
-            />
+            <Suspense fallback={<div>loading</div>}>
+                <DecisionHistory
+                    open={openModalHistory}
+                    onClose={handleCloseHistory}
+                    entries={memoEntries}
+                    title="Decision History"
+                    revertItems={revertHistories?.revertItems}
+                />
+            </Suspense>
         </div>
     );
 }
